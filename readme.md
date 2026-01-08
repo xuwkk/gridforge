@@ -20,6 +20,35 @@ GridForge currently supports the following features:
 
 > Note: GridForge is originally designed for our previous work [LAPSO: Learning Augmented Power System Optimization](https://github.com/xuwkk/lapso_exp). Now we publish it as a standalone package.
 
+## Installation
+
+**Install from GitHub (recommended)**
+
+```bash
+pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.2"
+```
+
+**Install latest commit**
+
+```bash
+pip install "git+https://github.com/xuwkk/gridforge.git"
+```
+
+**Editable install for development (local clone)**
+
+```bash
+git clone https://github.com/xuwkk/gridforge.git
+cd gridforge
+pip install -e .
+```
+
+**Optional: Gurobi support**
+
+```bash
+pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.2#egg=gridforge[gurobi]"
+```
+
+
 ## How to use
 
 Using GridForge is straightforward. It starts from downloading open-source grid operational data, followed by generating grid configurations by user's choice, and finally output the grid specification in `.xlsx` format and compatible spatio-temporal data in `.csv` format.
