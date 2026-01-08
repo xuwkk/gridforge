@@ -1,0 +1,12 @@
+__pycache__/
+*.py[codz]
+*$py.class
+*.pyc
+.ipynb_checkpoints/
+*.xlsx
+14bus_data/
+data/bus_data/
+data/raw_data.zip
+data/Data_public/
+*.egg-info/
+examples/14bus_uc/*.png

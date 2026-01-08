@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel", "setuptools_scm[toml]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gridforge"
+dynamic = ["version"]
+description = "Automatic power system configuration, data, and optimization generator."
+readme = "readme.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Wangkun Xu" }]
+dependencies = [
+  "numpy",
+  "pandas",
+  "pyyaml",
+  "tqdm",
+  "openpyxl",
+  "cvxpy",
+  "PYPOWER",
+  "cvxpy-summary @ git+https://github.com/xuwkk/cvxpy_summary.git@v0.0.1"
+]
+
+[project.optional-dependencies]
+gurobi = ["gurobipy"]
+
+[tool.setuptools.packages.find]
+include = ["gridforge*"]
+
+[tool.setuptools_scm]
+tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+\\.\\d+)$"

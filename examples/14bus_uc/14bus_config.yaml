@@ -1,0 +1,100 @@
+super_config:
+  pypower_case_name: "case14"   # The name of the PyPower case to be used. See https://rwl.github.io/PYPOWER/api/
+  baseMVA: 100
+  rescale_load: true            # Whether to rescale the load data based on the total generator capacity
+  rescale_load_ratio: 0.5       # The ratio of the load data to the total generator capacity
+grid_config:
+  bus:
+    BS: 
+      format: absolute 
+      value: [0.0]
+    GS:
+      format: absolute
+      value: [0.0]
+  gen:
+    PMAX:
+      format: absolute 
+      value: [160,140,100,120,150]
+    PMIN:
+      format: relative 
+      value: [0.1]
+    RAMP_UP:
+      format: absolute 
+      value: [40,35,25,30,37.5]
+    RAMP_DOWN:
+      format: absolute 
+      value: [80,70,50,60,75]
+    RAMP_STARTUP:
+      format: absolute 
+      value: [80,70,50,60,75]
+    RAMP_SHUTDOWN:
+      format: absolute 
+      value: [80,70,50,60,75]
+    RAMP_UP_RD: # ramp up limit at the redispatch stage
+      format: absolute 
+      value: [16,14,10,12,15]
+    RAMP_DOWN_RD:
+      format: absolute 
+      value: [40,35,25,30,37.5]
+    MIN_ON_TIME:
+      format: absolute
+      value: [5]
+    MIN_OFF_TIME:
+      format: absolute
+      value: [2]
+  branch:
+    TAP:
+      format: absolute 
+      value: [0.0]
+    SHIFT:
+      format: absolute 
+      value: [0.0]
+    BR_B:
+      format: absolute 
+      value: [0.0]
+  gencost:
+    STARTUP:
+      format: absolute 
+      value: [60,40,50,30,25]
+    SHUTDOWN:
+      format: absolute 
+      value: [10,15,5,17,8]
+    SECOND:
+      format: absolute 
+      value: [0.0,0.0,0.0,0.0,0.0]
+    FIRST:
+      format: absolute 
+      value: [3,1,6,4,5]
+    ZERO: # generator fixed cost
+      format: absolute 
+      value: [20,30,40,18,48]
+    STORAGE: # to charge the overgeneration
+      format: absolute 
+      value: [20.0,15.0,40.0,30.0,35.0]
+    RD_UP:   # redispatch stage generator ramp up cost: more costly
+      format: absolute 
+      value: [26,20,24,16,20]
+    RD_DOWN: # less costly
+      format: absolute 
+      value: [10,2,9,6,8]
+  solar:
+    INDEX:
+      format: absolute 
+      value: [2, 8]
+    CURTAIL_COST:  # cost for renewable curtailment
+      format: relative 
+      random_ratio: 0.2
+      value: [10]
+  wind:
+    INDEX:
+      format: relative 
+      value: [0.3]
+    CURTAIL_COST:  # cost for renewable curtailment
+      format: relative 
+      random_ratio: 0.2
+      value: [10.0]
+  load:
+    SHED_COST:
+      format: absolute
+      random_ratio: 0.2
+      value: [100.0]
