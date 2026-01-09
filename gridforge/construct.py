@@ -183,9 +183,17 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
                 
                     # Use the replaced generator capacity
                     # Ensure target_idx is a 1D array of bus indices, then find PMAX values for those GEN_BUS entries
-                    replaced_gen_cap = sheet_dict['gen'].loc[
-                        sheet_dict['gen']['GEN_BUS'].isin(np.atleast_1d(target_idx)), 'PMAX'
-                    ].values
+                    replaced_gen_cap = []
+                    for target_idx_ in target_idx:
+                        # Each bus may have multiple generators, we sum up the PMAX of all generators at the bus
+                        gen_pmax = np.sum(sheet_dict['gen'].loc[sheet_dict['gen']['GEN_BUS'] == target_idx_, 'PMAX'].values)
+                        replaced_gen_cap.append(gen_pmax)
+                        
+                    replaced_gen_cap = np.array(replaced_gen_cap)
+                    
+                    # replaced_gen_cap = sheet_dict['gen'].loc[
+                    #     sheet_dict['gen']['GEN_BUS'].isin(np.atleast_1d(target_idx)), 'PMAX'
+                    # ].values
                     
                     sheet_dict[key]['PMAX'] = replaced_gen_cap
                     
@@ -222,6 +230,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
     
     # Remove the row of the existing generator buses that are assigned to renewable plants
     if len(existing_renewable_bus_idx) > 0:
+        # This will remove all the generators at the buses that are assigned to renewable plants
         mask = ~sheet_dict["gen"]["GEN_BUS"].isin(existing_renewable_bus_idx)
         drop_idx = sheet_dict["gen"].index[~mask]
         sheet_dict["gen"] = sheet_dict["gen"].loc[mask].reset_index(drop=True)

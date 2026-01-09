@@ -69,7 +69,23 @@ First download the data [here](https://figshare.com/ndownloader/files/39478540).
 Then run the following command to unzip and preprocess the data in command line:
 ```bash
 unzip -n ./data/raw_data.zip -d ./data/
-python gridforge/preprocess.py
+```
+And then
+```python
+import numpy as np
+from tqdm import tqdm
+from gridforge.preprocess import preprocess_raw_data, sanity_check_bus_csv
+
+preprocess_raw_data()
+
+# Check if the data generation is correct
+no_day = 365
+no_bus = 123
+np.random.seed(42)  # for reproducibility
+bus_idx_list = np.random.randint(1, no_bus + 1, size=20)
+for bus_idx in tqdm(bus_idx_list, desc="Sanity checking per-bus files"):
+    sanity_check_bus_csv(
+        bus_idx = bus_idx, no_day=no_day)
 ```
 
 > **About the dataset.** The dataset from the above link is preferable for GridForge as it contains data that has both temporal and spatial correlations (see pitfall 1. Data). The weather data, as well as load and renewable generation data is allocated to each bus in one system (see pitfall 4. machine learning). If you are aware of other datasets with similar properties, please let us know!

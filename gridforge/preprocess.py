@@ -381,14 +381,14 @@ def sanity_check_bus_csv(
         wind_all = np.array(wind_all).reshape(-1)
         assert np.allclose(wind_all_, wind_all)
     
-if __name__ == "__main__":
-    no_day = 365
-    no_bus = 123
-    # seed
-    np.random.seed(42)
-    preprocess_raw_data(no_day=no_day, no_bus=no_bus)
+# if __name__ == "__main__":
+#     no_day = 365
+#     no_bus = 123
+#     # seed
+#     np.random.seed(42)
+#     preprocess_raw_data(no_day=no_day, no_bus=no_bus)
     
-    bus_idx_list = np.random.randint(1, no_bus + 1, size=20)
-    for bus_idx in tqdm(bus_idx_list, desc="Sanity checking per-bus files"):
-        sanity_check_bus_csv(
-            bus_idx = bus_idx, no_day=no_day)
+#     bus_idx_list = np.random.randint(1, no_bus + 1, size=20)
+#     for bus_idx in tqdm(bus_idx_list, desc="Sanity checking per-bus files"):
+#         sanity_check_bus_csv(
+#             bus_idx = bus_idx, no_day=no_day)
