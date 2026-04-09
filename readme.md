@@ -32,7 +32,7 @@ It also includes:
 **Install from GitHub (recommended)**
 
 ```bash
-pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3"
+pip install "git+https://github.com/xuwkk/gridforge.git@v1.0.0"
 ```
 
 **Install latest commit**
@@ -52,9 +52,9 @@ pip install -e .
 **Optional extras**
 
 ```bash
-pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3#egg=gridforge[gurobi]"
-pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3#egg=gridforge[app]"
-pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3#egg=gridforge[full]"
+pip install "git+https://github.com/xuwkk/gridforge.git@v1.0.0#egg=gridforge[gurobi]"
+pip install "git+https://github.com/xuwkk/gridforge.git@v1.0.0#egg=gridforge[app]"
+pip install "git+https://github.com/xuwkk/gridforge.git@v1.0.0#egg=gridforge[full]"
 ```
 
 ## What GridForge gives you
