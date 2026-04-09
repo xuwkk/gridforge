@@ -1,31 +1,38 @@
 # GridForge
 
 <p align="center">
-  <img src="repo_fig/gridforge.png" alt="GridForge Logo" width="220"/>
+  <img src="repo_fig/gridforge.png" alt="GridForge Logo" width="250"/>
 </p>
 
+**GridForge** is a power-system configuration and optimization toolkit.
+It helps you:
 
-**GridForge** is an automatic power system configuration, data, and optimization generator, designed to help power system researchers to quickly generate testbeds for optimization and machine learning studies. It is built to overcome the following pitfalls of existing power system testbeds:
-1. **Data**: under a network setting, *spatio-temporal* data (including load and renewable generation) on each bus is required. 
-2. **Grid**: the grid configuration provided in `pypower` (a Python mirror of `matpower`) does not include configurations for *complex power system optimizations* such as unit commitment, etc.
-3. **Data-Grid-Optimization**: the data should be *compatible with the grid configurations*, such as generator capacity, transmission line capacity, etc.
-4. **Machine learning**: for a forecasting task, the spatio-temporal data should come with *contexts* such as weather information to build supervised learning models.
+- build configurable grid cases from YAML,
+- export them to Excel workbooks,
+- load them into optimization-friendly Python objects,
+- attach aligned per-bus time series,
+- and write your own CVXPY-based formulations.
 
-GridForge currently supports the following features:
-1. Enhance the existing `pypower` test system by adding new entries such as generator ramps, renewable generators, etc.
-2. The configurations can be interfaced by `cvxpy` so that the user can design their own optimization problems quickly.
-3. Based on open-source nodal weather, load, and renewable generation data over a year, GridForge can automatically rescale the data based on the grid configurations.
+GridForge is designed for researchers who want flexible power-system testbeds
+without hiding the optimization model behind a rigid DSL.
 
-> Note: GridForge can generate configurations and data compatible with CVXPY modeling; solvability depends on whether the resulting formulation is DCP/DQCP and on the chosen solver (especially for mixed-integer UC). See [the optimization classes supported by cvxpy](https://www.cvxpy.org/tutorial/solvers/index.html#choosing-a-solver).
+It also includes:
 
-> Note: GridForge is originally designed for our previous work [LAPSO: Learning Augmented Power System Optimization](https://github.com/xuwkk/lapso_exp). Now we publish it as a standalone package.
+- a visual YAML builder app,
+- plotting helpers for case topology,
+- a MATPOWER-to-PYPOWER conversion helper,
+- and one optional TX-123BT reference data workflow.
+
+> Note: GridForge can generate configurations and data compatible with CVXPY modeling; solvability still depends on whether the resulting formulation is DCP/DQCP and on the chosen solver, especially for mixed-integer UC. See [the optimization classes supported by CVXPY](https://www.cvxpy.org/tutorial/solvers/index.html#choosing-a-solver).
+
+> Note: GridForge is originally designed for our previous work [LAPSO: Learning Augmented Power System Optimization](https://github.com/xuwkk/lapso_exp). It is now refined and published as a standalone package.
 
 ## Installation
 
 **Install from GitHub (recommended)**
 
 ```bash
-pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.2"
+pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3"
 ```
 
 **Install latest commit**
@@ -42,147 +49,239 @@ cd gridforge
 pip install -e .
 ```
 
-**Optional: Gurobi support**
+**Optional extras**
 
 ```bash
-pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.2#egg=gridforge[gurobi]"
+pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3#egg=gridforge[gurobi]"
+pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3#egg=gridforge[app]"
+pip install "git+https://github.com/xuwkk/gridforge.git@v0.0.3#egg=gridforge[full]"
 ```
 
+## What GridForge gives you
 
-## How to use
+- [`construct_grid_config(...)`](/home/wx/my_project/gridforge/gridforge/construct.py): build a case workbook from YAML
+- [`Grid(...)`](/home/wx/my_project/gridforge/gridforge/opt.py): load the workbook into optimization-facing objects
+- [`Data(...)`](/home/wx/my_project/gridforge/gridforge/opt.py): load aligned per-bus time-series matrices
+- [`gridforge-app`](/home/wx/my_project/gridforge/gridforge/app_cli.py): visually author and inspect YAML configs
 
-Using GridForge is straightforward. It starts from downloading open-source grid operational data, followed by generating grid configurations by user's choice, and finally output the grid specification in `.xlsx` format and compatible spatio-temporal data in `.csv` format.
+## Quickstart
+
+```python
+from gridforge.construct import construct_grid_config
+from gridforge.opt import Grid, Data
+
+config_yaml = "14bus_config.yaml"
+config_xlsx = "14bus_config.xlsx"
+data_dir = "14bus_data"
+
+construct_grid_config(config_yaml, config_xlsx, random_seed=404)
+
+grid = Grid(config_xlsx, config_yaml, verbose=0)
+data = Data(config_xlsx, data_dir, sheet_names=["load", "solar", "wind"])
+
+print(grid.core.branch.ptdf.shape)
+print(grid.core.gen.pmax)
+print(data.get_series("load").shape)
+```
+
+## Core concepts
+
+After `Grid(...)` is instantiated, the workbook is exposed through three layers:
+
+- `grid.sheets[...]`: raw Excel tables as pandas DataFrames
+- `grid.core.*`: schema-defined core sheets such as `bus`, `gen`, `branch`, and `gencost`
+- `grid.custom[...]`: generic BUS-backed custom sheets such as `load`, `solar`, and `wind`
+
+The YAML is the source of truth:
+
+- `grid_config`: modify core sheets and add custom sheets
+- `rescale`: post-build aggregate balancing rules
+
+The app is a visual YAML builder, not a separate configuration system.
+
+## Worked example: IEEE 14-bus UC
+
+We go through the [IEEE 14-bus system](examples/14bus_uc) as a worked example.
 
 <p align="center">
   <img src="repo_fig/flowchart.png" alt="GridForge Architecture" width="600"/>
 </p>
 
+### Step 1: Construct grid configurations
 
-We go through the [IEEE 14-bus system](examples/14bus_uc) as an example.
+[PYPOWER](https://github.com/rwl/PYPOWER) provides the base network case. GridForge augments it with YAML-defined rules for:
 
-### Step 1: Preprocess the raw data
+- modifying core sheets,
+- adding custom sheets,
+- and applying optional `rescale` rules.
 
-We use the data from open-souce [TX-123BT system](https://rpglab.github.io/resources/TX-123BT/) and [the paper: A synthetic Texas power system with time-series weather-dependent spatiotemporal profiles](https://www.sciencedirect.com/science/article/pii/S2352467725001560). 
-
-First download the data [here](https://figshare.com/ndownloader/files/39478540). Copy the ```.zip``` file under `data/` and rename it to `raw_data.zip`.
-
-Then run the following command to unzip and preprocess the data in command line:
-```bash
-unzip -n ./data/raw_data.zip -d ./data/
-```
-And then
-```python
-import numpy as np
-from tqdm import tqdm
-from gridforge.preprocess import preprocess_raw_data, sanity_check_bus_csv
-
-preprocess_raw_data()
-
-# Check if the data generation is correct
-no_day = 365
-no_bus = 123
-np.random.seed(42)  # for reproducibility
-bus_idx_list = np.random.randint(1, no_bus + 1, size=20)
-for bus_idx in tqdm(bus_idx_list, desc="Sanity checking per-bus files"):
-    sanity_check_bus_csv(
-        bus_idx = bus_idx, no_day=no_day)
-```
-
-> **About the dataset.** The dataset from the above link is preferable for GridForge as it contains data that has both temporal and spatial correlations (see pitfall 1. Data). The weather data, as well as load and renewable generation data is allocated to each bus in one system (see pitfall 4. machine learning). If you are aware of other datasets with similar properties, please let us know!
-
-The data associated to each bus (there are 123 buses in total) will be saved in `data/bus_data/bus_{idx}`. Each dataframe contains columns ['Weekday_sin', 'Weekday_cos', 'Hour_sin', 'Hour_cos', 'Temperature (k)', 'Shortwave Radiation (w/m2)', 'Longwave Radiation (w/m2)', 'Zonal Wind Speed (m/s)', 'Meridional Wind Speed (m/s)', 'Wind Speed (m/s)', 'Load', 'Solar', 'Wind']. Each bus has at most one renewable plant (solar or wind). The periodicity features such as weekday and hour are represented by the cosine and sin waves with corresponding periods.
-
-> **Preprocessing time.** Step 1 may take several minutes as the raw data is large. After the first time, you can skip this step and directly use the preprocessed data in `data/bus_data/`.
-
-### Step 2: Construct grid configurations
-
-[PyPower](https://github.com/rwl/PYPOWER) (or matpower) provides comprehensive configurations for power system networks. See the bus14 example online [here](https://github.com/rwl/PYPOWER/blob/master/pypower/case14.py). The PyPower configurations contain the basic power system information, and to be able to implement complex operations such as unit commitment, **extra configurations are needed**. 
-
-GridForge is built upon the PyPower configurations and the user is asked to provide a configuration file (in `.yaml` format), where the new entries can be added either by absolute values or relative values to some **key configurations** in a PyPower settings. Detailed conversion rules are provided in [`config_definition.md`](config_definition.md). An example configuration file is provided in [`14bus_config.yaml`](examples/14bus_uc/14bus_config.yaml) for augmenting the IEEE 14-bus system.
-
-After creating your configuration file, you can generate the grid configuration using:
+Example:
 
 ```python
 from gridforge.construct import construct_grid_config
 
 config_path_yaml = "14bus_config.yaml"
 config_path_xlsx = "14bus_config.xlsx"
-random_seed = 404  # Set random seed for reproducibility
+random_seed = 404
 
 construct_grid_config(config_path_yaml, config_path_xlsx, random_seed)
 ```
 
-This will create an Excel file with sheets for `bus`, `gen`, `gencost`, `branch`, `load`, `solar`, and `wind` (if specified in your config).
+This creates an Excel workbook with sheets such as:
 
-### Step 3: Prepare bus data
+- `bus`
+- `gen`
+- `gencost`
+- `branch`
+- `load`
+- `solar`
+- `wind`
 
-After generating the grid configuration, you need to assign and rescale the preprocessed bus data to match your grid configuration:
+GridForge uses unified key columns across sheets:
 
-```python
-from gridforge.construct import construct_grid_data
-data_dir = "14bus_data"
-verbose = 0
-construct_grid_data(config_path_xlsx, data_dir, random_seed, verbose=verbose)
+- bus index: `BUS_IDX`
+- status: `STATUS`
+- branch endpoints: `F_BUS_IDX`, `T_BUS_IDX`
+
+Detailed YAML schema documentation is available in [config_definition.md](/home/wx/my_project/gridforge/config_definition.md).
+
+### Optional: Visual config app
+
+<p align="center">
+  <img src="repo_fig/app_1.png" alt="GridForge Config App" width="550"/>
+</p>
+<p align="center">
+  <img src="repo_fig/app_2.png" alt="GridForge Config App" width="600"/>
+</p>
+
+You can use the built-in Streamlit app as a visual YAML builder:
+
+```bash
+pip install "gridforge[app]"
+gridforge-app
 ```
 
-This function will:
-- Assign preprocessed data (Step 1) from `data/bus_data/` to each bus in your grid configuration. Each bus will now be associated with load, solar, and/or wind data profiles and the corresponding contexts.
-- Rescale the data based on the capacity specified in the grid configuration.
-- Save the processed data as CSV files (`bus_{idx}.csv`) in the specified output directory.
+If you also want the plotting dependencies commonly used with the app and the
+worked example, you can install:
 
-> **Note:** The `random_seed` parameter ensures reproducibility. Use the same seed for both `prepare_grid_from_pypower` and `prepare_data` to get consistent results across runs.
+```bash
+pip install "gridforge[full]"
+```
 
-### Step 4: Build your own optimization problem
+If you are working from a local source checkout, this also works:
 
-You can now build your own optimization problem using the grid configuration and data. A complete example is provided in [`14bus_example.py`](examples/14bus_uc/14bus_example.py). Three classes are specified as
-- `Grid`: containing the grid configuration,
-- `OptModel`: containing the optimization model, and
-- `Data`: containing the data.
-where the `data` and `grid` will be built automatically. You can also inherit from these classes to build more tailored formulations.
+```bash
+streamlit run gridforge/config_app.py
+```
+
+The app supports:
+
+- selecting `super_config` values,
+- adding/removing sheets,
+- adding/editing field rules,
+- authoring `BUS_IDX` placement,
+- authoring `rescale` rules,
+- previewing YAML, sheets, and topology,
+- running `construct_grid_config(...)` directly.
+
+The YAML remains the source of truth.
+
+### Step 2: Load Grid/Data and build an optimization model
+
+GridForge provides three optimization-facing classes:
+
+- `Grid`: grid workbook access
+- `Data`: aligned per-bus time series
+- `OptModel`: thin CVXPY model container
+
+Example:
 
 ```python
-from gridforge.opt import Grid, OptModel, Data
+from gridforge.opt import Grid, Data, OptModel
 
 T = 24
 
-data = Data(grid_config_path, config_path, data_dir, entry_name=["Load", "Solar", "Wind"])
-grid = Grid(grid_config_path, config_path, verbose=verbose)
+data = Data(config_path_xlsx, data_dir, sheet_names=["load", "solar", "wind"])
+grid = Grid(config_path_xlsx, config_path_yaml, verbose=0)
 m = OptModel(grid)
 ```
 
-The load, solar, and wind data are stored in `data.load_data`, `data.solar_data`, and `data.wind_data` respectively. You can access all the grid information:
+`Data` loads each requested non-core sheet by matching the sheet name to the
+same-named column in each per-bus CSV file, case-insensitively.
+
+`Grid` exposes:
+
+- `grid.sheets[...]`
+- `grid.core.*`
+- `grid.custom[...]`
+
+For example:
+
 ```python
-print(grid.nbus) # number of buses
-print(grid.bus_component) # bus component
-print(grid.gen_component.pmax) # generator capacity
-print(grid.gencost_component['first']) # generator cost coefficient
+print(grid.nbus)                         # number of buses
+print(grid.core.gen.pmax)               # generator capacity
+print(grid.core.branch.ptdf.shape)      # PTDF matrix
+print(grid.custom["load"].Cbus)         # bus-to-load incidence
+print(data.get_series("solar").shape)   # (T, nsolar) time-series matrix
 ```
 
-You can use the function `add_variable`, `add_parameter`, `add_constraint`, and `add_objective_term` in the `OptModel` class to build your own optimization problem. For example,
-```python
-m.add_parameter("load", (T, grid.nload))
-m.add_variable("ug", (T, grid.ngen), is_binary=True)
-m.add_variable("yg", (T, grid.ngen), is_binary=True)
-m.add_variable("zg", (T, grid.ngen), is_binary=True)
-m.add_constraint([
-    yg[t] + zg[t] <= 1 for t in range(T)
-])
-m.add_objective_term(cp.sum(cp.multiply(grid.gencost_component['startup'], m.vars['yg'])))
-```
+You can then use:
 
-### Step 5: Solve the optimization problem
+- `add_variable(...)`
+- `add_parameter(...)`
+- `add_constraint(...)`
+- `add_objective_term(...)`
 
-Then compile the optimization problem by providing the parameters and solve it:
+to build your own optimization formulation.
+
+### Step 3: Solve the optimization problem
+
+Compile the model with parameter values and solve it:
 
 ```python
 parameters = {
-    "load": data.load_data[idx:idx+T, :] / grid.baseMVA,
-    "solar": data.solar_data[idx:idx+T, :] / grid.baseMVA,
-    "wind": data.wind_data[idx:idx+T, :] / grid.baseMVA
+    "load": data.get_series("load")[idx:idx+T, :] / grid.baseMVA,
+    "solar": data.get_series("solar")[idx:idx+T, :] / grid.baseMVA,
+    "wind": data.get_series("wind")[idx:idx+T, :] / grid.baseMVA,
 }
 prob = m.compile(**parameters)
-prob.solve(solver = "GUROBI")
+prob.solve(solver="GUROBI")
 print(prob.status)
 ```
 
-Again see the complete example in [`14bus_example.py`](examples/14bus_uc/14bus_example.py).
+See the full worked example in [14bus_example.py](/home/wx/my_project/gridforge/examples/14bus_uc/14bus_example.py).
+
+## Reference workflow: TX-123BT
+
+GridForge includes an optional public-data reference workflow based on TX-123BT.
+Most users only need the core workflow above.
+
+Fastest path:
+
+```bash
+bash scripts/generate_tx123bt_bus_data.sh
+```
+
+Optional cleanup of unused raw folders after success:
+
+```bash
+KEEP_RAW_DATA=0 bash scripts/generate_tx123bt_bus_data.sh
+```
+
+For full dataset details, manual preprocessing steps, and bus-data construction,
+see [tx123bt_workflow.md](/home/wx/my_project/gridforge/tx123bt_workflow.md).
+
+## Utilities
+
+GridForge also includes a MATPOWER conversion helper:
+
+- [`convert_matpower_to_pypower(...)`](/home/wx/my_project/gridforge/gridforge/matpower_io.py)
+
+This converts MATPOWER `.m` case files into PYPOWER-style `.py` case files.
+
+## Further reading
+
+- Configuration schema: [config_definition.md](/home/wx/my_project/gridforge/config_definition.md)
+- `Grid(...)` access guide: [grid_entries.md](/home/wx/my_project/gridforge/grid_entries.md)
+- TX-123BT reference workflow: [tx123bt_workflow.md](/home/wx/my_project/gridforge/tx123bt_workflow.md)
+- Full worked example: [14bus_example.py](/home/wx/my_project/gridforge/examples/14bus_uc/14bus_example.py)

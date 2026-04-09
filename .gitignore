@@ -3,10 +3,15 @@ __pycache__/
 *$py.class
 *.pyc
 .ipynb_checkpoints/
-*.xlsx
+.pytest_cache/
+build/
+# *.xlsx
 14bus_data/
 data/bus_data/
 data/raw_data.zip
 data/Data_public/
 *.egg-info/
 examples/14bus_uc/*.png
+examples/14bus_uc/*.html
+.DS_Store
+.codex

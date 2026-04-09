@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gridforge"
 dynamic = ["version"]
-description = "Automatic power system configuration, data, and optimization generator."
+description = "Power system configuration and optimization toolkit."
 readme = "readme.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -21,8 +21,14 @@ dependencies = [
   "cvxpy-summary @ git+https://github.com/xuwkk/cvxpy_summary.git@v0.0.1"
 ]
 
+[project.scripts]
+gridforge-app = "gridforge.app_cli:main"
+
 [project.optional-dependencies]
 gurobi = ["gurobipy"]
+viz = ["networkx", "matplotlib", "plotly"]
+app = ["streamlit"]
+full = ["streamlit", "networkx", "matplotlib", "plotly"]
 
 [tool.setuptools.packages.find]
 include = ["gridforge*"]

@@ -1,55 +1,148 @@
 """
-Class of data. Automatically extract the data from the grid .xlsx file.
+Optimization-facing helpers for GridForge.
+
+- ``Data`` loads time-series matrices from a folder of per-bus CSV files.
+- ``Grid`` exposes the generated Excel workbook through three layers:
+  raw sheets (``grid.sheets[...]``), core schema-defined objects
+  (``grid.core.*``), and generic BUS_IDX-backed custom sheets
+  (``grid.custom[...]``).
+- ``OptModel`` is a thin CVXPY container for variables, parameters,
+  constraints, and objective terms.
 """
 
 import pandas as pd
 import numpy as np
-from typing import List
+from typing import Dict, List, Optional
 import os
 import yaml
 import cvxpy as cp
 
 class Data:
-    def __init__(self, grid_xlsx_path: str, config_path: str, data_dir: str, entry_name: List[str]):
-        
+    """Load prepared per-bus CSV time series using the grid Excel ordering.
+
+    A non-core Excel sheet is considered time-series-backed when:
+    - it has a ``BUS_IDX`` column, and
+    - the per-bus CSV files contain a column matching the sheet name
+      case-insensitively.
+
+    The resulting matrix for each sheet is stored in ``data.series[name]``
+    with shape ``(T, n_sheet_rows)`` and follows the Excel row order.
+    """
+    CORE_SHEETS = {"bus", "gen", "branch", "gencost"}
+
+    def __init__(
+        self,
+        grid_xlsx_path: str,
+        data_dir: str,
+        sheet_names: Optional[List[str]] = None,
+        strict: bool = True,
+    ):
         grid_config = pd.read_excel(grid_xlsx_path, sheet_name=None)
-        # NOTE: It is important to keep the sequence of the solar, wind, and load in the excel file.
-        if "Solar" in entry_name:
-            solar_config = grid_config["solar"]
-            solar_bus_idx = solar_config["INDEX"].values
-            solar_data = []
-        else:
-            solar_bus_idx = []
-        if "Wind" in entry_name:
-            wind_config = grid_config["wind"]
-            wind_bus_idx = wind_config["INDEX"].values
-            wind_data = []
-        else:
-            wind_bus_idx = []
-        if "Load" in entry_name:
-            load_config = grid_config["load"]
-            load_bus_idx = load_config["INDEX"].values  # Sorted by the order of the load index in the excel file, this will match the incidence matrix convention
-            load_data = []
-        else:
-            load_bus_idx = []
-        
-        file_list = os.listdir(data_dir)
-        bus_data = {}
-        for file in file_list:
-            if file.endswith('.csv'):
-                bus_idx = int(file.split('.')[0].split('_')[1])
-                bus_data[bus_idx] = pd.read_csv(os.path.join(data_dir, file))
-        
-        for bus_idx in load_bus_idx:
-            load_data.append(bus_data[bus_idx]['Load'].values)
-        for bus_idx in solar_bus_idx:
-            solar_data.append(bus_data[bus_idx]['Solar'].values)
-        for bus_idx in wind_bus_idx:
-            wind_data.append(bus_data[bus_idx]['Wind'].values)
-            
-        self.load_data = np.array(load_data).T
-        self.solar_data = np.array(solar_data).T
-        self.wind_data = np.array(wind_data).T
+
+        bus_data: Dict[int, pd.DataFrame] = {}
+        for file in os.listdir(data_dir):
+            if not file.endswith(".csv"):
+                continue
+            try:
+                bus_idx = int(file.split(".")[0].split("_")[1])
+            except (IndexError, ValueError):
+                continue
+            bus_data[bus_idx] = pd.read_csv(os.path.join(data_dir, file))
+
+        self.series: Dict[str, np.ndarray] = {}
+        self.bus_idx: Dict[str, np.ndarray] = {}
+        self.time_index: Dict[str, np.ndarray] = {}
+        self.sheet_order: List[str] = []
+
+        requested_sheets: Optional[List[str]] = None
+        if sheet_names is not None:
+            requested_sheets = [str(name).strip() for name in sheet_names]
+
+        candidate_sheets = []
+        for sheet_name, sheet_df in grid_config.items():
+            if sheet_name in self.CORE_SHEETS:
+                continue
+            if "BUS_IDX" not in sheet_df.columns:
+                continue
+            if requested_sheets is not None and sheet_name not in requested_sheets:
+                continue
+            candidate_sheets.append(sheet_name)
+
+        if requested_sheets is not None:
+            for sheet_name in requested_sheets:
+                if sheet_name not in grid_config:
+                    raise ValueError(f"Requested data sheet '{sheet_name}' does not exist in '{grid_xlsx_path}'.")
+                if sheet_name in self.CORE_SHEETS:
+                    raise ValueError(f"Requested data sheet '{sheet_name}' is a core sheet and is not time-series-backed.")
+                if "BUS_IDX" not in grid_config[sheet_name].columns:
+                    raise ValueError(f"Requested data sheet '{sheet_name}' must contain a BUS_IDX column.")
+
+        for sheet_name in candidate_sheets:
+            sheet_df = grid_config[sheet_name]
+            bus_idx_values = pd.to_numeric(sheet_df["BUS_IDX"], errors="coerce")
+            if bus_idx_values.isna().any():
+                raise ValueError(f"Sheet '{sheet_name}' contains non-numeric BUS_IDX values.")
+            ordered_bus_idx = bus_idx_values.astype(int).to_numpy()
+
+            component_series = []
+            matched_column_name: Optional[str] = None
+            expected_length: Optional[int] = None
+
+            for bus_idx in ordered_bus_idx:
+                if int(bus_idx) not in bus_data:
+                    raise ValueError(f"Missing CSV file for bus {int(bus_idx)} required by sheet '{sheet_name}'.")
+
+                bus_df = bus_data[int(bus_idx)]
+                lower_name_map = {str(col).strip().lower(): col for col in bus_df.columns}
+                matched_column_name = lower_name_map.get(sheet_name.strip().lower(), None)
+
+                if matched_column_name is None:
+                    if strict:
+                        raise ValueError(
+                            f"Bus CSV for bus {int(bus_idx)} is missing a column matching sheet '{sheet_name}'."
+                        )
+                    component_series = []
+                    break
+
+                series_values = pd.to_numeric(bus_df[matched_column_name], errors="coerce").to_numpy(dtype=float)
+                if expected_length is None:
+                    expected_length = len(series_values)
+                elif len(series_values) != expected_length:
+                    raise ValueError(
+                        f"Inconsistent time-series length for sheet '{sheet_name}': "
+                        f"bus {int(bus_idx)} has length {len(series_values)}, expected {expected_length}."
+                    )
+                component_series.append(series_values)
+
+            if len(component_series) == 0:
+                continue
+
+            stacked = np.column_stack(component_series)
+            self.series[sheet_name] = stacked
+            self.bus_idx[sheet_name] = ordered_bus_idx
+            self.time_index[sheet_name] = np.arange(stacked.shape[0])
+            self.sheet_order.append(sheet_name)
+
+    def sheet_names(self) -> List[str]:
+        return list(self.sheet_order)
+
+    def has_sheet(self, name: str) -> bool:
+        return str(name).strip() in self.series
+
+    def get_series(self, name: str) -> np.ndarray:
+        key = str(name).strip()
+        if key not in self.series:
+            raise KeyError(f"Time-series sheet '{key}' is not loaded.")
+        return self.series[key]
+
+    def get_bus_idx(self, name: str) -> np.ndarray:
+        key = str(name).strip()
+        if key not in self.bus_idx:
+            raise KeyError(f"Time-series sheet '{key}' is not loaded.")
+        return self.bus_idx[key]
+
+    def get_n(self, name: str) -> int:
+        return self.get_series(name).shape[1]
         
 class AttrDict(dict):
     """A dictionary that can be accessed as an attribute."""
@@ -65,9 +158,69 @@ class AttrDict(dict):
     def __delattr__(self, key):
         del self[key]
 
+
+class SheetComponent(AttrDict):
+    """Generic wrapper for a BUS_IDX-backed custom sheet."""
+
+    def field(self, name: str):
+        key = str(name).strip().lower()
+        if key not in self:
+            raise KeyError(f"Field '{name}' is not available in component '{self.get('name', '?')}'.")
+        return self[key]
+
+    def field_names(self) -> List[str]:
+        return [k for k in self.keys() if k not in {"name", "table", "n", "bus_idx", "Cbus"}]
+
+    def has_field(self, name: str) -> bool:
+        return str(name).strip().lower() in self
+
+    def active_mask(self) -> np.ndarray:
+        if "status" in self:
+            return np.asarray(self["status"]).astype(float) > 0
+        return np.ones(int(self["n"]), dtype=bool)
+
+    def active_rows(self) -> np.ndarray:
+        return np.where(self.active_mask())[0]
+
+
+class TabularCoreSheet(AttrDict):
+    """Lightweight wrapper for a schema-defined core sheet."""
+
+    RESERVED_KEYS = {"name", "table", "n"}
+
+    def field(self, name: str):
+        key = str(name).strip().lower()
+        if key not in self:
+            raise KeyError(f"Field '{name}' is not available in core sheet '{self.get('name', '?')}'.")
+        return self[key]
+
+    def field_names(self) -> List[str]:
+        return [k for k in self.keys() if k not in self.RESERVED_KEYS]
+
+    def has_field(self, name: str) -> bool:
+        return str(name).strip().lower() in self
+
+
+class BusCoreSheet(TabularCoreSheet):
+    RESERVED_KEYS = {"name", "table", "n", "bus_idx", "slack_bus_idx", "non_slack_bus_idx", "ref_theta"}
+
+
+class BranchCoreSheet(TabularCoreSheet):
+    RESERVED_KEYS = {"name", "table", "n"}
+
+
+class GenCostCoreSheet(TabularCoreSheet):
+    RESERVED_KEYS = {"name", "table", "n"}
+
+
 class Grid:
-    
-    """A class that contains the grid configuration defined in the excel file."""
+    """Expose the generated grid workbook for raw optimization modeling.
+
+    Access patterns:
+    - ``grid.sheets["solar"]``: raw DataFrame from the Excel workbook
+    - ``grid.core.branch.ptdf``: schema-defined network object
+    - ``grid.custom["load"].Cbus``: generic BUS_IDX-backed custom sheet
+    """
     # NOTE: Nothing should be in p.u. in this implementation
     # TODO: better handling of the unit conversion for Grid and OptModel
     
@@ -79,153 +232,174 @@ class Grid:
         super_cfg = config['super_config']
             
         grid_cfg = pd.read_excel(grid_xlsx_path, sheet_name=None)
-        
+
+        self.sheets = AttrDict()
+        self.core = AttrDict()
+        self.custom = AttrDict()
+
         for key, value in grid_cfg.items():
-            setattr(self, key, value)
+            self.sheets[key] = value
+
+        def _build_bus_component(name: str, df: pd.DataFrame) -> SheetComponent:
+            # Template for grid component
+            comp = SheetComponent()
+            comp["name"] = name
+            comp["table"] = df
+            comp["n"] = len(df)
+            if "BUS_IDX" not in df.columns:
+                raise ValueError(f"Sheet '{name}' must contain BUS_IDX to build a bus-backed component.")
+            comp["bus_idx"] = df["BUS_IDX"].astype(int).values - 1
+            comp["Cbus"] = np.zeros((self.nbus, comp["n"]))
+            for i, idx in enumerate(comp["bus_idx"]):
+                comp["Cbus"][idx, i] = 1
+            for key, value in df.items():
+                if key == "BUS_IDX":
+                    continue
+                comp[key.lower()] = value.values
+            return comp
         
         # System dimensions
-        self.nbus = len(self.bus)
-        self.ngen = len(self.gen)
-        self.nbranch = len(self.branch)
-        self.nload = len(self.load)
-        self.nsolar = len(self.solar) if hasattr(self, 'solar') else 0
-        self.nwind = len(self.wind) if hasattr(self, 'wind') else 0
+        self.nbus = len(self.sheets["bus"])
+        self.ngen = len(self.sheets["gen"])
+        self.nbranch = len(self.sheets["branch"])
         
         # System parameters: 0-based index
         self.baseMVA = super_cfg['baseMVA']
-        slacks = (self.bus[self.bus["BUS_TYPE"] == 3]["BUS_I"].astype(int).values - 1)
+        self.core.bus = BusCoreSheet()
+        self.core.bus["name"] = "bus"
+        self.core.bus["table"] = self.sheets["bus"]
+        self.core.bus["n"] = self.nbus
+        self.core.bus["bus_idx"] = self.sheets["bus"]["BUS_IDX"].astype(int).values - 1
+        for key, value in self.sheets["bus"].items():
+            self.core.bus[key.lower()] = value.values
+
+        slacks = (self.sheets["bus"][self.sheets["bus"]["BUS_TYPE"] == 3]["BUS_IDX"].astype(int).values - 1)
         if len(slacks) != 1:
             raise ValueError(f"Expected exactly 1 slack bus, got {len(slacks)}.")
-        self.slack_bus_idx = int(slacks[0])
-        self.non_slack_bus_idx = [i for i in range(self.nbus) if i != self.slack_bus_idx]
-        self.load_bus_idx = self.bus[self.bus['PD'] > 0]['BUS_I'].values - 1 
-        self.gen_bus_idx = self.gen['GEN_BUS'].values - 1
-        self.solar_bus_idx = self.solar['INDEX'].values - 1 if hasattr(self, 'solar') else None
-        self.wind_bus_idx = self.wind['INDEX'].values - 1 if hasattr(self, 'wind') else None
-        self.ref_theta = self.bus.iloc[self.slack_bus_idx]['VA'] * np.pi / 180 # reference angle of the slack bus, in radians
+        self.core.bus["slack_bus_idx"] = int(slacks[0])
+        self.core.bus["non_slack_bus_idx"] = [i for i in range(self.nbus) if i != self.core.bus.slack_bus_idx]
+        self.core.bus["ref_theta"] = self.sheets["bus"].iloc[self.core.bus.slack_bus_idx]['VA'] * np.pi / 180 # reference angle of the slack bus, in radians
+
+        self.core.gen = _build_bus_component("gen", self.sheets["gen"])
         
-        # Load parameters
-        self.load_component = AttrDict()
-        self.load_component['Cload'] = np.zeros((self.nbus, self.nload))
-        for i, idx in enumerate(self.load_bus_idx):
-            self.load_component['Cload'][idx, i] = 1
-        self.load_component['pmax'] = self.load['PMAX'].values
-        
-        for key, value in self.load.items(): # Other load parameters
-            if key not in ['INDEX', 'PMAX']:
-                self.load_component[key.lower()] = value.values 
-        
-        # Generator parameters
-        self.gen_component = AttrDict()
-        self.gen_component['Cgen'] = np.zeros((self.nbus, self.ngen))
-        for i, idx in enumerate(self.gen_bus_idx):
-            self.gen_component['Cgen'][idx, i] = 1
-        self.gen_component['pmax'] = self.gen['PMAX'].values
-        self.gen_component['pmin'] = self.gen['PMIN'].values
-        
-        for key, value in self.gen.items():
-            if key not in ['INDEX', 'PMAX', 'PMIN']:
-                self.gen_component[key.lower()] = value.values
-                
         # Branch parameters
-        self.branch_component = AttrDict()
-        self.branch_component['Cf'] = np.zeros((self.nbranch, self.nbus))
-        self.branch_component['Ct'] = np.zeros((self.nbranch, self.nbus))
-        for i, idx in enumerate(self.branch['F_BUS'].values):
-            self.branch_component['Cf'][i, idx-1] = 1
-        for i, idx in enumerate(self.branch['T_BUS'].values):
-            self.branch_component['Ct'][i, idx-1] = 1
-        self.branch_component['A'] = self.branch_component['Cf'] - self.branch_component['Ct']
+        self.core.branch = BranchCoreSheet()
+        self.core.branch["name"] = "branch"
+        self.core.branch['table'] = self.sheets["branch"]
+        self.core.branch['n'] = self.nbranch
+        for key, value in self.sheets["branch"].items():
+            self.core.branch[key.lower()] = value.values
+        self.core.branch['Cf'] = np.zeros((self.nbranch, self.nbus))
+        self.core.branch['Ct'] = np.zeros((self.nbranch, self.nbus))
+        for i, idx in enumerate(self.sheets["branch"]['F_BUS_IDX'].values):
+            self.core.branch['Cf'][i, idx-1] = 1
+        for i, idx in enumerate(self.sheets["branch"]['T_BUS_IDX'].values):
+            self.core.branch['Ct'][i, idx-1] = 1
+        self.core.branch['A'] = self.core.branch['Cf'] - self.core.branch['Ct']
         
-        tap = self.branch["TAP"].values
+        tap = self.sheets["branch"]["TAP"].values
         tap[np.where(tap == 0)] = 1
-        Bff = 1/(self.branch["BR_X"].values * tap)
-        self.branch_component['Bf'] = np.diag(Bff) @ self.branch_component['A'] # branch susceptance matrix
-        self.branch_component['Bbus'] = self.branch_component['A'].T @ self.branch_component['Bf']  # bus susceptance matrix
-        self.branch_component['Pfshift'] = -self.branch["SHIFT"].values / 180 * np.pi * Bff  # shifter due to the transformer
-        self.branch_component['Pbusshift'] = self.branch_component['A'].T @ self.branch_component['Pfshift']
-        self.branch_component['Gsh'] = self.bus['GS'].values   # shunt conductance matrix
-        self.branch_component['pmax'] = self.branch["RATE_A"].values # branch power limit
+        Bff = 1/(self.sheets["branch"]["BR_X"].values * tap)
+        self.core.branch['Bf'] = np.diag(Bff) @ self.core.branch['A'] # branch susceptance matrix
+        self.core.branch['Bbus'] = self.core.branch['A'].T @ self.core.branch['Bf']  # bus susceptance matrix
+        self.core.branch['Pfshift'] = -self.sheets["branch"]["SHIFT"].values / 180 * np.pi * Bff  # shifter due to the transformer
+        self.core.branch['Pbusshift'] = self.core.branch['A'].T @ self.core.branch['Pfshift']
+        self.core.branch['Gsh'] = self.sheets["bus"]['GS'].values   # shunt conductance matrix
+        self.core.branch['pmax'] = self.sheets["branch"]["RATE_A"].values # branch power limit
         
-        Bred = self.branch_component['Bbus'][self.non_slack_bus_idx, :][:, self.non_slack_bus_idx]
+        Bred = self.core.branch['Bbus'][self.core.bus.non_slack_bus_idx, :][:, self.core.bus.non_slack_bus_idx]
         # Solve Bred * X = I (or equivalently use scipy.linalg.solve)
         X = np.linalg.solve(Bred, np.eye(Bred.shape[0]))
-        ptdf = self.branch_component['Bf'][:, self.non_slack_bus_idx] @ X
-        identity_remove_slack = np.delete(np.eye(self.nbus), self.slack_bus_idx, axis=0)
-        self.branch_component['ptdf'] = ptdf @ identity_remove_slack  # power transfer distribution factors
+        ptdf = self.core.branch['Bf'][:, self.core.bus.non_slack_bus_idx] @ X
+        identity_remove_slack = np.delete(np.eye(self.nbus), self.core.bus.slack_bus_idx, axis=0)
+        self.core.branch['ptdf'] = ptdf @ identity_remove_slack  # power transfer distribution factors
         
         # Generator cost parameters
         # TODO: when dealing with the unit conversion, second order cost coefficient should be converted to $/MWh^2
-        self.gencost_component = AttrDict()
-        for key, value in self.gencost.items():
+        self.core.gencost = GenCostCoreSheet()
+        self.core.gencost["name"] = "gencost"
+        self.core.gencost['table'] = self.sheets["gencost"]
+        self.core.gencost['n'] = len(self.sheets["gencost"])
+        for key, value in self.sheets["gencost"].items():
             if key not in ['MODEL', 'ORDER']:
-                self.gencost_component[key.lower()] = value.values
-        
-        # Solar parameters
-        if hasattr(self, 'solar'):
-            self.solar_component = AttrDict()
-            self.solar_component['Csolar'] = np.zeros((self.nbus, self.nsolar))
-            for i, idx in enumerate(self.solar_bus_idx):
-                self.solar_component['Csolar'][idx, i] = 1
-            self.solar_component['pmax'] = self.solar['PMAX'].values
-            for key, value in self.solar.items():
-                if key not in ['INDEX', 'PMAX']:
-                    self.solar_component[key.lower()] = value.values
-        else:
-            self.solar_component = None
-                    
-        # Wind parameters
-        if hasattr(self, 'wind'):
-            self.wind_component = AttrDict()
-            self.wind_component['Cwind'] = np.zeros((self.nbus, self.nwind))
-            for i, idx in enumerate(self.wind_bus_idx):
-                self.wind_component['Cwind'][idx, i] = 1
-            self.wind_component['pmax'] = self.wind['PMAX'].values
-            for key, value in self.wind.items():
-                if key not in ['INDEX', 'PMAX']:
-                    self.wind_component[key.lower()] = value.values
-        else:
-            self.wind_component = None
-            
+                self.core.gencost[key.lower()] = value.values
+
+        # Generic BUS_IDX-backed custom sheets
+        for sheet_name, sheet_df in self.sheets.items():
+            if sheet_name in {"bus", "gen", "branch", "gencost"}:
+                continue
+            if "BUS_IDX" not in sheet_df.columns:
+                continue
+            self.custom[sheet_name] = _build_bus_component(sheet_name, sheet_df)
+
         if verbose >= 1:
             print("\n")
             print("="*50)
             print("System information (0-based index)")
             print("="*50)
             print("\n")
-            print(f"System dimensions: {self.nbus} buses, {self.ngen} generators, \
-                {self.nbranch} branches, {self.nload} loads, \
-                {self.nsolar} solar plants, {self.nwind} wind plants")
-            print(f"Slack bus indices: {self.slack_bus_idx}")
-            print(f"Non-slack bus indices: {self.non_slack_bus_idx}")
-            print(f"Load bus indices: {self.load_bus_idx}")
-            print(f"Generator bus indices: {self.gen_bus_idx}")
-            print(f"Solar bus indices: {self.solar_bus_idx}")
-            print(f"Wind bus indices: {self.wind_bus_idx}")
+            custom_summary = ", ".join(
+                f"{name}={custom_sheet.n}" for name, custom_sheet in self.custom.items()
+            ) or "none"
+            print(
+                f"System dimensions: {self.nbus} buses, {self.ngen} generators, "
+                f"{self.nbranch} branches"
+            )
+            print(f"Custom BUS_IDX-backed sheets: {custom_summary}")
+            print(f"Slack bus indices: {self.core.bus.slack_bus_idx}")
+            print(f"Non-slack bus indices: {self.core.bus.non_slack_bus_idx}")
+            print(f"Generator bus indices: {self.core.gen.bus_idx}")
+            for name, custom_sheet in self.custom.items():
+                print(f"{name} bus indices: {custom_sheet.bus_idx}")
             
             print("\n")
             
             if verbose >= 2:
-                print("Load parameters:")
-                print(self.load_component)
-                print("\n")
                 print("Generator parameters:")
-                print(self.gen_component)
+                print(self.core.gen)
                 print("\n")
                 print("Branch parameters:")
-                print(self.branch_component)
+                print(self.core.branch)
                 print("\n")
                 print("Generator cost parameters:")
-                print(self.gencost_component)
-                print("\n")
-                print("Solar parameters:")
-                print(self.solar_component)
-                print("\n")
-                print("Wind parameters:")
-                print(self.wind_component)
-                print("\n")
-                print("Load parameters:")
-                print(self.load_component)
+                print(self.core.gencost)
+                for name, custom_sheet in self.custom.items():
+                    print("\n")
+                    print(f"{name} parameters:")
+                    print(custom_sheet)
+
+    def sheet_names(self) -> List[str]:
+        return list(self.sheets.keys())
+
+    def custom_names(self) -> List[str]:
+        return list(self.custom.keys())
+
+    def core_names(self) -> List[str]:
+        return list(self.core.keys())
+
+    def has_core(self, name: str) -> bool:
+        return str(name).strip() in self.core
+
+    def core_sheet(self, name: str) -> TabularCoreSheet:
+        key = str(name).strip()
+        if key not in self.core:
+            raise KeyError(f"Core sheet '{key}' is not available.")
+        return self.core[key]
+
+    def has_custom(self, name: str) -> bool:
+        return str(name).strip() in self.custom
+
+    def custom_sheet(self, name: str) -> SheetComponent:
+        key = str(name).strip()
+        if key not in self.custom:
+            raise KeyError(f"Custom sheet '{key}' is not available.")
+        return self.custom[key]
+
+    def sheet(self, name: str) -> pd.DataFrame:
+        key = str(name).strip()
+        if key not in self.sheets:
+            raise KeyError(f"Sheet '{key}' is not available.")
+        return self.sheets[key]
 
 class OptModel:
     """A class that contains the optimization model."""
