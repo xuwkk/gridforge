@@ -59,10 +59,10 @@ pip install "git+https://github.com/xuwkk/gridforge.git@v1.0.0#egg=gridforge[ful
 
 ## What GridForge gives you
 
-- [`construct_grid_config(...)`](/home/wx/my_project/gridforge/gridforge/construct.py): build a case workbook from YAML
-- [`Grid(...)`](/home/wx/my_project/gridforge/gridforge/opt.py): load the workbook into optimization-facing objects
-- [`Data(...)`](/home/wx/my_project/gridforge/gridforge/opt.py): load aligned per-bus time-series matrices
-- [`gridforge-app`](/home/wx/my_project/gridforge/gridforge/app_cli.py): visually author and inspect YAML configs
+- [`construct_grid_config(...)`](gridforge/construct.py): build a case workbook from YAML
+- [`Grid(...)`](gridforge/opt.py): load the workbook into optimization-facing objects
+- [`Data(...)`](gridforge/opt.py): load aligned per-bus time-series matrices
+- [`gridforge-app`](gridforge/app_cli.py): visually author and inspect YAML configs
 
 ## Quickstart
 
@@ -143,7 +143,7 @@ GridForge uses unified key columns across sheets:
 - status: `STATUS`
 - branch endpoints: `F_BUS_IDX`, `T_BUS_IDX`
 
-Detailed YAML schema documentation is available in [config_definition.md](/home/wx/my_project/gridforge/config_definition.md).
+Detailed YAML schema documentation is available in [config_definition.md](config_definition.md).
 
 ### Optional: Visual config app
 
@@ -249,7 +249,7 @@ prob.solve(solver="GUROBI")
 print(prob.status)
 ```
 
-See the full worked example in [14bus_example.py](/home/wx/my_project/gridforge/examples/14bus_uc/14bus_example.py).
+See the full worked example in [14bus_example.py](examples/14bus_uc/14bus_example.py).
 
 ## Reference workflow: TX-123BT
 
@@ -269,19 +269,19 @@ KEEP_RAW_DATA=0 bash scripts/generate_tx123bt_bus_data.sh
 ```
 
 For full dataset details, manual preprocessing steps, and bus-data construction,
-see [tx123bt_workflow.md](/home/wx/my_project/gridforge/tx123bt_workflow.md).
+see [tx123bt_workflow.md](tx123bt_workflow.md).
 
 ## Utilities
 
 GridForge also includes a MATPOWER conversion helper:
 
-- [`convert_matpower_to_pypower(...)`](/home/wx/my_project/gridforge/gridforge/matpower_io.py)
+- [`convert_matpower_to_pypower(...)`](gridforge/matpower_io.py)
 
 This converts MATPOWER `.m` case files into PYPOWER-style `.py` case files.
 
 ## Further reading
 
-- Configuration schema: [config_definition.md](/home/wx/my_project/gridforge/config_definition.md)
-- `Grid(...)` access guide: [grid_entries.md](/home/wx/my_project/gridforge/grid_entries.md)
-- TX-123BT reference workflow: [tx123bt_workflow.md](/home/wx/my_project/gridforge/tx123bt_workflow.md)
-- Full worked example: [14bus_example.py](/home/wx/my_project/gridforge/examples/14bus_uc/14bus_example.py)
+- Configuration schema: [config_definition.md](config_definition.md)
+- `Grid(...)` access guide: [grid_entries.md](grid_entries.md)
+- TX-123BT reference workflow: [tx123bt_workflow.md](tx123bt_workflow.md)
+- Full worked example: [14bus_example.py](examples/14bus_uc/14bus_example.py)
