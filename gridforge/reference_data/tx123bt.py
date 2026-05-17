@@ -4,7 +4,7 @@ Reference data pipeline for the TX-123BT-based GridForge examples.
 This module is source-specific. It contains:
 - preprocessing from the public TX-123BT raw files into per-bus CSVs
 - sanity checks for those generated per-bus CSVs
-- assignment/rescaling of those per-bus CSVs to a generated GridForge case
+- a compatibility wrapper around GridForge's generic bus-data assignment tools
 
 Conventions in this reference pipeline are intentionally fixed:
 - one CSV per bus named ``bus_<idx>.csv``
@@ -18,6 +18,8 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import trange, tqdm
+
+from gridforge.data import materialize_bus_data_assignment, suggest_bus_data_assignment
 
 def _build_bus_to_renewable_assignment(
     xlsx_path: str = "data/Data_public/Generator_data.xlsx",
@@ -421,159 +423,38 @@ def construct_tx123bt_grid_data(
     print(f"Reading preprocessed bus data from {processed_data_dir}")
     print(f"Saving processed bus data to {data_dir}")
 
-    np.random.seed(random_seed)
-    os.makedirs(data_dir, exist_ok=True)
+    signals = _tx123bt_signals(grid_xlsx_path)
+    assignment = suggest_bus_data_assignment(
+        grid_xlsx_path=grid_xlsx_path,
+        source_data_dir=processed_data_dir,
+        signals=signals,
+        output_data_dir=data_dir,
+        random_seed=random_seed,
+    )
+    return materialize_bus_data_assignment(
+        grid_xlsx_path=grid_xlsx_path,
+        assignment=assignment,
+        output_data_dir=data_dir,
+        verbose=verbose,
+    )
 
-    load_config = pd.read_excel(grid_xlsx_path, sheet_name="load")
-    load_bus_idx = load_config["BUS_IDX"].values
-    bus_data: Dict[int, Optional[pd.DataFrame]] = {int(bus_idx): None for bus_idx in load_bus_idx}
 
-    solar_config: Optional[pd.DataFrame] = None
-    solar_bus_idx: np.ndarray = np.array([], dtype=int)
-    try:
-        solar_config = pd.read_excel(grid_xlsx_path, sheet_name="solar")
-        solar_bus_idx = solar_config["BUS_IDX"].values
-        bus_data.update({int(bus_idx): None for bus_idx in solar_bus_idx})
-    except ValueError:
-        print("No solar config is provided")
-
-    wind_config: Optional[pd.DataFrame] = None
-    wind_bus_idx: np.ndarray = np.array([], dtype=int)
-    try:
-        wind_config = pd.read_excel(grid_xlsx_path, sheet_name="wind")
-        wind_bus_idx = wind_config["BUS_IDX"].values
-        bus_data.update({int(bus_idx): None for bus_idx in wind_bus_idx})
-    except ValueError:
-        print("No wind config is provided")
-
-    if not os.path.exists(processed_data_dir):
-        raise ValueError(f"Processed data directory {processed_data_dir} does not exist")
-    file_names = [f for f in os.listdir(processed_data_dir) if f.endswith(".csv")]
-    if not file_names:
-        raise ValueError(f"No CSV files found in {processed_data_dir}")
-
-    def _helper_find_data(
-        target_type: str,
-        assigned_data_names: List[str],
-    ) -> Tuple[Optional[pd.DataFrame], List[str]]:
-        shuffled_files = file_names.copy()
-        np.random.shuffle(shuffled_files)
-
-        for name in shuffled_files:
-            if name in assigned_data_names:
-                continue
-
-            try:
-                data = pd.read_csv(os.path.join(processed_data_dir, name))
-                if target_type not in data.columns:
-                    continue
-                if np.sum(data[target_type]) <= 0:
-                    continue
-                assigned_data_names.append(name)
-                return data, assigned_data_names
-            except Exception as e:
-                print(f"Warning: Error reading {name}: {e}")
-                continue
-
-        return None, assigned_data_names
-
-    def _helper_rescale_data(
-        target_type: str,
-        config: pd.DataFrame,
-        data: pd.DataFrame,
-        bus_idx: int,
-    ) -> pd.DataFrame:
-        capacity = config["PMAX"].values[config["BUS_IDX"] == bus_idx]
-        if len(capacity) == 0:
-            raise ValueError(f"No capacity found for bus {bus_idx} in config")
-        if len(capacity) > 1:
-            raise ValueError(f"Multiple capacity entries found for bus {bus_idx}")
-
-        max_value = np.max(data[target_type])
-        if max_value <= 0:
-            raise ValueError(
-                f"Cannot rescale {target_type} data for bus {bus_idx}: max value is {max_value}"
-            )
-
-        ratio = capacity[0] / max_value
-        data = data.copy()
-        data[target_type] = data[target_type] * ratio
-        return data
-
-    def _process_bus_data(
-        bus_idx: int,
-        assigned_data_names: List[str],
-        renewable_type: Optional[str] = None,
-        renewable_config: Optional[pd.DataFrame] = None,
-    ) -> Tuple[pd.DataFrame, List[str]]:
-        data: Optional[pd.DataFrame] = None
-        is_load_bus = bus_idx in load_bus_idx
-
-        if renewable_type and renewable_config is not None:
-            data, assigned_data_names = _helper_find_data(renewable_type, assigned_data_names)
-            if data is None:
-                print(f"No available data for {renewable_type.lower()} bus {bus_idx}. Reusing assigned data.")
-                data, assigned_data_names = _helper_find_data(renewable_type, [])
-
-            data = _helper_rescale_data(renewable_type, renewable_config, data, bus_idx)
-
-            if is_load_bus:
-                data = _helper_rescale_data("load", load_config, data, bus_idx)
-            else:
-                data["load"] = 0.0
-
-            if renewable_type == "solar":
-                data["wind"] = 0.0
-            else:
-                data["solar"] = 0.0
-
-        elif is_load_bus:
-            data, assigned_data_names = _helper_find_data("load", assigned_data_names)
-            if data is None:
-                print(f"No available data for load bus {bus_idx}. Reusing assigned data.")
-                data, assigned_data_names = _helper_find_data("load", [])
-
-            data = _helper_rescale_data("load", load_config, data, bus_idx)
-            data["solar"] = 0.0
-            data["wind"] = 0.0
-        else:
-            raise ValueError(f"Bus {bus_idx} has no load or renewable assignment")
-
-        return data, assigned_data_names
-
-    assigned_data_names: List[str] = []
-    for bus_idx in bus_data.keys():
-        bus_idx_int = int(bus_idx)
-
-        if bus_idx_int in solar_bus_idx:
-            data, assigned_data_names = _process_bus_data(
-                bus_idx_int, assigned_data_names, "solar", solar_config
-            )
-        elif bus_idx_int in wind_bus_idx:
-            data, assigned_data_names = _process_bus_data(
-                bus_idx_int, assigned_data_names, "wind", wind_config
-            )
-        elif bus_idx_int in load_bus_idx:
-            data, assigned_data_names = _process_bus_data(bus_idx_int, assigned_data_names)
-        else:
-            raise ValueError(f"Bus {bus_idx_int} is not assigned to any load or renewable")
-
-        bus_data[bus_idx_int] = data
-
-    for bus_idx, data in sorted(bus_data.items()):
-        if data is None:
-            raise ValueError(f"Bus {bus_idx} data was not constructed.")
-        output_file = os.path.join(data_dir, f"bus_{bus_idx}.csv")
-        data.to_csv(output_file, index=False)
-
-        if verbose > 0:
-            print("\n" + "=" * 50)
-            print(f"Bus Data Assignment Summary: saved to {data_dir}")
-            print("=" * 50)
-
-            print(f"\nBus {bus_idx}: saved to {output_file}")
-            print(f"  Load bus: {np.sum(data['load']) > 0}")
-            print(f"  Solar bus: {np.sum(data['solar']) > 0}")
-            print(f"  Wind bus: {np.sum(data['wind']) > 0}")
-
-    return bus_data  # type: ignore[return-value]
+def _tx123bt_signals(grid_xlsx_path: str) -> Dict[str, Dict[str, object]]:
+    """Return default TX-123BT signal specs for sheets present in the workbook."""
+    sheets = pd.read_excel(grid_xlsx_path, sheet_name=None)
+    signals: Dict[str, Dict[str, object]] = {}
+    for signal_name in ["load", "solar", "wind"]:
+        if signal_name not in sheets:
+            continue
+        signals[signal_name] = {
+            "workbook_sheet": signal_name,
+            "source_column": signal_name,
+            "output_column": signal_name,
+            "scale_to": {
+                "column": "PMAX",
+                "method": "max",
+            },
+        }
+    if not signals:
+        raise ValueError("TX-123BT data construction requires at least one of: load, solar, wind.")
+    return signals

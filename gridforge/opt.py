@@ -4,7 +4,7 @@ Optimization-facing helpers for GridForge.
 - ``Data`` loads time-series matrices from a folder of per-bus CSV files.
 - ``Grid`` exposes the generated Excel workbook through three layers:
   raw sheets (``grid.sheets[...]``), core schema-defined objects
-  (``grid.core.*``), and generic BUS_IDX-backed custom sheets
+  (``grid.core.*``), and generic custom sheets attached to buses
   (``grid.custom[...]``).
 - ``OptModel`` is a thin CVXPY container for variables, parameters,
   constraints, and objective terms.
@@ -12,13 +12,46 @@ Optimization-facing helpers for GridForge.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 import os
 import yaml
 import cvxpy as cp
 
+METADATA_SHEET_NAME = "__metadata__"
+
+
+def _metadata_dataframe_to_dict(metadata_df: pd.DataFrame) -> Dict[str, object]:
+    if not {"KEY", "VALUE"}.issubset(metadata_df.columns):
+        raise ValueError(
+            f"Metadata sheet '{METADATA_SHEET_NAME}' must contain KEY and VALUE columns."
+        )
+    metadata = {}
+    for _, row in metadata_df.iterrows():
+        key = str(row["KEY"]).strip()
+        if not key:
+            continue
+        metadata[key] = row["VALUE"]
+    return metadata
+
+
+def _load_legacy_yaml_metadata(config_path: Optional[str]) -> Dict[str, object]:
+    if config_path is None:
+        raise ValueError(
+            f"Workbook is missing '{METADATA_SHEET_NAME}'. Rebuild the workbook with "
+            "construct_grid_config(...), or pass the original YAML path as the second "
+            "argument when loading an older workbook."
+        )
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    return dict(config["super_config"])
+
+
 class Data:
     """Load prepared per-bus CSV time series using the grid Excel ordering.
+
+    Full per-bus CSV files are stored in ``data.bus_frames``. Sheet-backed
+    matrices, such as load or solar, are additionally exposed through
+    ``get_series(name)``.
 
     A non-core Excel sheet is considered time-series-backed when:
     - it has a ``BUS_IDX`` column, and
@@ -28,7 +61,7 @@ class Data:
     The resulting matrix for each sheet is stored in ``data.series[name]``
     with shape ``(T, n_sheet_rows)`` and follows the Excel row order.
     """
-    CORE_SHEETS = {"bus", "gen", "branch", "gencost"}
+    CORE_SHEETS = {"bus", "gen", "branch"}
 
     def __init__(
         self,
@@ -53,6 +86,7 @@ class Data:
         self.bus_idx: Dict[str, np.ndarray] = {}
         self.time_index: Dict[str, np.ndarray] = {}
         self.sheet_order: List[str] = []
+        self.bus_frames: Dict[int, pd.DataFrame] = bus_data
 
         requested_sheets: Optional[List[str]] = None
         if sheet_names is not None:
@@ -143,6 +177,68 @@ class Data:
 
     def get_n(self, name: str) -> int:
         return self.get_series(name).shape[1]
+
+    def bus_ids(self) -> List[int]:
+        """Return the bus IDs for which a case-specific CSV file was loaded."""
+        return sorted(self.bus_frames.keys())
+
+    def get_bus_frame(self, bus_idx: int) -> pd.DataFrame:
+        """Return the full case-specific CSV DataFrame for one generated bus."""
+        bus_key = int(bus_idx)
+        if bus_key not in self.bus_frames:
+            raise KeyError(f"Bus CSV for bus {bus_key} is not loaded.")
+        return self.bus_frames[bus_key]
+
+    def get_column(
+        self,
+        column_name: str,
+        bus_idx: Optional[Sequence[int]] = None,
+        strict: bool = True,
+    ) -> np.ndarray:
+        """
+        Return one arbitrary CSV column stacked across buses.
+
+        This is useful for contextual columns, such as weather or calendar
+        features, that are present in the bus CSV files but are not necessarily
+        tied to a workbook sheet.
+        """
+        column_key = str(column_name).strip()
+        if not column_key:
+            raise ValueError("column_name cannot be empty.")
+
+        selected_bus_idx = list(self.bus_ids() if bus_idx is None else [int(idx) for idx in bus_idx])
+        if len(selected_bus_idx) == 0:
+            return np.empty((0, 0))
+
+        column_series = []
+        matched_column_name: Optional[str] = None
+        expected_length: Optional[int] = None
+        for bus in selected_bus_idx:
+            if bus not in self.bus_frames:
+                raise KeyError(f"Bus CSV for bus {bus} is not loaded.")
+            bus_df = self.bus_frames[bus]
+            lower_name_map = {str(col).strip().lower(): col for col in bus_df.columns}
+            actual_column = lower_name_map.get(column_key.lower())
+            if actual_column is None:
+                if strict:
+                    raise KeyError(f"Bus CSV for bus {bus} is missing column '{column_name}'.")
+                return np.empty((0, 0))
+            matched_column_name = actual_column
+            values = pd.to_numeric(bus_df[actual_column], errors="coerce").to_numpy(dtype=float)
+            if np.isnan(values).any():
+                raise ValueError(
+                    f"Column '{matched_column_name}' in bus {bus} contains non-numeric values."
+                )
+            if expected_length is None:
+                expected_length = len(values)
+            elif len(values) != expected_length:
+                raise ValueError(
+                    f"Inconsistent column length for '{matched_column_name}': "
+                    f"bus {bus} has length {len(values)}, expected {expected_length}."
+                )
+            column_series.append(values)
+
+        return np.column_stack(column_series)
         
 class AttrDict(dict):
     """A dictionary that can be accessed as an attribute."""
@@ -160,7 +256,7 @@ class AttrDict(dict):
 
 
 class SheetComponent(AttrDict):
-    """Generic wrapper for a BUS_IDX-backed custom sheet."""
+    """Generic wrapper for a sheet attached to buses."""
 
     def field(self, name: str):
         key = str(name).strip().lower()
@@ -209,33 +305,31 @@ class BranchCoreSheet(TabularCoreSheet):
     RESERVED_KEYS = {"name", "table", "n"}
 
 
-class GenCostCoreSheet(TabularCoreSheet):
-    RESERVED_KEYS = {"name", "table", "n"}
-
-
 class Grid:
     """Expose the generated grid workbook for raw optimization modeling.
 
     Access patterns:
     - ``grid.sheets["solar"]``: raw DataFrame from the Excel workbook
     - ``grid.core.branch.ptdf``: schema-defined network object
-    - ``grid.custom["load"].Cbus``: generic BUS_IDX-backed custom sheet
+    - ``grid.custom["load"].Cbus``: generic custom sheet attached to buses
+    - ``grid.branch`` / ``grid.load``: convenience aliases when names are safe
     """
     # NOTE: Nothing should be in p.u. in this implementation
     # TODO: better handling of the unit conversion for Grid and OptModel
     
-    def __init__(self, grid_xlsx_path: str, config_path: str, verbose: int = 1):
-        
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-            
-        super_cfg = config['super_config']
-            
+    def __init__(self, grid_xlsx_path: str, config_path: Optional[str] = None, verbose: int = 1):
         grid_cfg = pd.read_excel(grid_xlsx_path, sheet_name=None)
+        metadata_df = grid_cfg.pop(METADATA_SHEET_NAME, None)
+        if metadata_df is None:
+            metadata = _load_legacy_yaml_metadata(config_path)
+        else:
+            metadata = _metadata_dataframe_to_dict(metadata_df)
 
         self.sheets = AttrDict()
         self.core = AttrDict()
         self.custom = AttrDict()
+        self.aliases = AttrDict()
+        self.metadata = AttrDict(metadata)
 
         for key, value in grid_cfg.items():
             self.sheets[key] = value
@@ -264,7 +358,12 @@ class Grid:
         self.nbranch = len(self.sheets["branch"])
         
         # System parameters: 0-based index
-        self.baseMVA = super_cfg['baseMVA']
+        if "baseMVA" not in metadata or pd.isna(metadata["baseMVA"]):
+            raise ValueError(
+                f"Workbook metadata must include baseMVA. Rebuild the workbook with "
+                "construct_grid_config(...)."
+            )
+        self.baseMVA = float(metadata["baseMVA"])
         self.core.bus = BusCoreSheet()
         self.core.bus["name"] = "bus"
         self.core.bus["table"] = self.sheets["bus"]
@@ -314,23 +413,19 @@ class Grid:
         identity_remove_slack = np.delete(np.eye(self.nbus), self.core.bus.slack_bus_idx, axis=0)
         self.core.branch['ptdf'] = ptdf @ identity_remove_slack  # power transfer distribution factors
         
-        # Generator cost parameters
-        # TODO: when dealing with the unit conversion, second order cost coefficient should be converted to $/MWh^2
-        self.core.gencost = GenCostCoreSheet()
-        self.core.gencost["name"] = "gencost"
-        self.core.gencost['table'] = self.sheets["gencost"]
-        self.core.gencost['n'] = len(self.sheets["gencost"])
-        for key, value in self.sheets["gencost"].items():
-            if key not in ['MODEL', 'ORDER']:
-                self.core.gencost[key.lower()] = value.values
-
-        # Generic BUS_IDX-backed custom sheets
+        # Generic custom sheets attached to buses.
         for sheet_name, sheet_df in self.sheets.items():
-            if sheet_name in {"bus", "gen", "branch", "gencost"}:
+            if sheet_name in {"bus", "gen", "branch"}:
                 continue
             if "BUS_IDX" not in sheet_df.columns:
                 continue
             self.custom[sheet_name] = _build_bus_component(sheet_name, sheet_df)
+
+        self._register_alias("bus", self.core.bus)
+        self._register_alias("gen", self.core.gen)
+        self._register_alias("branch", self.core.branch)
+        for sheet_name, custom_sheet in self.custom.items():
+            self._register_alias(sheet_name, custom_sheet)
 
         if verbose >= 1:
             print("\n")
@@ -345,7 +440,7 @@ class Grid:
                 f"System dimensions: {self.nbus} buses, {self.ngen} generators, "
                 f"{self.nbranch} branches"
             )
-            print(f"Custom BUS_IDX-backed sheets: {custom_summary}")
+            print(f"Custom sheets attached to buses: {custom_summary}")
             print(f"Slack bus indices: {self.core.bus.slack_bus_idx}")
             print(f"Non-slack bus indices: {self.core.bus.non_slack_bus_idx}")
             print(f"Generator bus indices: {self.core.gen.bus_idx}")
@@ -361,15 +456,26 @@ class Grid:
                 print("Branch parameters:")
                 print(self.core.branch)
                 print("\n")
-                print("Generator cost parameters:")
-                print(self.core.gencost)
                 for name, custom_sheet in self.custom.items():
                     print("\n")
                     print(f"{name} parameters:")
                     print(custom_sheet)
 
+    def _register_alias(self, name: str, value) -> bool:
+        alias = str(name).strip()
+        if not alias.isidentifier():
+            return False
+        if hasattr(self, alias):
+            return False
+        setattr(self, alias, value)
+        self.aliases[alias] = value
+        return True
+
     def sheet_names(self) -> List[str]:
         return list(self.sheets.keys())
+
+    def alias_names(self) -> List[str]:
+        return list(self.aliases.keys())
 
     def custom_names(self) -> List[str]:
         return list(self.custom.keys())

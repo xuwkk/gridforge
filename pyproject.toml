@@ -28,6 +28,7 @@ gridforge-app = "gridforge.app_cli:main"
 gurobi = ["gurobipy"]
 viz = ["networkx", "matplotlib", "plotly"]
 app = ["streamlit"]
+docs = ["mkdocs", "mkdocs-material", "pymdown-extensions"]
 full = ["streamlit", "networkx", "matplotlib", "plotly"]
 
 [tool.setuptools.packages.find]

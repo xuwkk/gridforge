@@ -3,11 +3,26 @@ This module is used to generate the grid configuration.
 """
 
 from typing import Dict, List, Optional, Tuple, Any
+import importlib.util
+from pathlib import Path
 import numpy as np
 import pandas as pd
+
+if not hasattr(np, "asscalar"):
+    np.asscalar = lambda a: a.item()
+
 import pypower.api as pp
 import yaml
 
+from gridforge.matpower_io import convert_matpower_to_pypower
+
+
+CORE_SHEET_NAMES = {"bus", "gen", "branch"}
+BASE_PYPOWER_SHEETS = ["bus", "gen", "branch", "gencost"]
+METADATA_SHEET_NAME = "__metadata__"
+SUPPORTED_FORMATS = {"absolute", "relative"}
+SUPPORTED_MAP_BY = {"row", "bus_idx"}
+SUPPORTED_AGGREGATES = {"max", "min", "mean", "sum"}
 
 SHEET_COLUMNS = {
     "bus": [
@@ -22,24 +37,247 @@ SHEET_COLUMNS = {
     "gencost": ["MODEL", "STARTUP", "SHUTDOWN", "ORDER", "SECOND", "FIRST", "ZERO"],
 }
 
+GENCOST_COLUMN_MAP = {
+    "MODEL": "COST_MODEL",
+    "STARTUP": "COST_STARTUP",
+    "SHUTDOWN": "COST_SHUTDOWN",
+    "ORDER": "COST_ORDER",
+    "SECOND": "COST_SECOND",
+    "FIRST": "COST_FIRST",
+    "ZERO": "COST_ZERO",
+}
+
 
 def _load_gridforge_yaml(config_path: str) -> Dict[str, Any]:
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
 
-def _load_base_pypower_sheets(pypower_case_name: str) -> Dict[str, pd.DataFrame]:
-    """Load the base PYPOWER case into DataFrames with GridForge column names."""
-    ppc = getattr(pp, pypower_case_name)()
+def _validate_gridforge_yaml(cfg: Dict[str, Any]) -> None:
+    """Validate the YAML shape before mutating any sheet data."""
+    if not isinstance(cfg, dict):
+        raise ValueError("GridForge config must be a dictionary.")
+    if "super_config" not in cfg or not isinstance(cfg["super_config"], dict):
+        raise ValueError("GridForge config must include a `super_config` dictionary.")
+    if "pypower_case_name" not in cfg["super_config"]:
+        raise ValueError("`super_config` must include `pypower_case_name`.")
+    if "grid_config" not in cfg or not isinstance(cfg["grid_config"], dict):
+        raise ValueError("GridForge config must include a `grid_config` dictionary.")
+
+    grid_cfg = cfg["grid_config"]
+    for sheet_name, sheet_cfg in grid_cfg.items():
+        if not isinstance(sheet_cfg, dict):
+            raise ValueError(f"`grid_config.{sheet_name}` must be a dictionary.")
+        if sheet_name not in CORE_SHEET_NAMES and "BUS_IDX" not in sheet_cfg:
+            raise ValueError(
+                f"Custom sheet '{sheet_name}' must define BUS_IDX. "
+                "All custom sheets must be attached to buses through BUS_IDX."
+            )
+        for column_name, column_cfg in sheet_cfg.items():
+            _validate_column_rule(sheet_name, column_name, column_cfg)
+
+    rescale_cfg = cfg.get("rescale", [])
+    if rescale_cfg is None:
+        return
+    if not isinstance(rescale_cfg, list):
+        raise ValueError("`rescale` must be a list of rescale rules.")
+    for rule_idx, rule_cfg in enumerate(rescale_cfg):
+        _validate_rescale_rule_shape(rule_cfg, rule_idx)
+
+
+def _validate_column_rule(sheet_name: str, column_name: str, column_cfg: Any) -> None:
+    ctx = f"{sheet_name}.{column_name}"
+    if not isinstance(column_cfg, dict):
+        raise ValueError(f"`grid_config.{ctx}` must be a dictionary.")
+    if "format" not in column_cfg:
+        raise ValueError(f"Missing `format` for {ctx}.")
+    fmt = str(column_cfg["format"]).strip().lower()
+    if fmt not in SUPPORTED_FORMATS:
+        raise ValueError(f"Unsupported format '{fmt}' for {ctx}.")
+    if "value" not in column_cfg:
+        raise ValueError(f"Missing `value` for {ctx}.")
+    if not isinstance(column_cfg["value"], list):
+        raise ValueError(f"`value` for {ctx} must be a list.")
+    if len(column_cfg["value"]) == 0:
+        raise ValueError(f"`value` for {ctx} cannot be empty.")
+    _validate_random_ratio(column_cfg, ctx)
+
+    if column_name == "BUS_IDX":
+        if fmt == "relative":
+            rel_cfg = column_cfg.get("relative_to")
+            if not isinstance(rel_cfg, dict) or "bus_type" not in rel_cfg:
+                raise ValueError(f"`{ctx}` with format relative requires `relative_to.bus_type`.")
+            if len(column_cfg["value"]) != 1:
+                raise ValueError(f"`{ctx}` with format relative requires exactly one value.")
+            if float(column_cfg["value"][0]) > 1:
+                raise ValueError(f"`{ctx}` relative value must be <= 1.")
+        remove_gen = column_cfg.get("remove_gen", False)
+        if not isinstance(remove_gen, bool):
+            raise ValueError(f"`{ctx}.remove_gen` must be boolean.")
+        return
+
+    if fmt == "relative":
+        rel_cfg = column_cfg.get("relative_to")
+        if not isinstance(rel_cfg, dict):
+            raise ValueError(f"`{ctx}` with format relative requires a `relative_to` dictionary.")
+        if "sheet" not in rel_cfg or "column" not in rel_cfg:
+            raise ValueError(f"`{ctx}.relative_to` must include both `sheet` and `column`.")
+        map_by_mode = rel_cfg.get("map_by")
+        aggregate_mode = rel_cfg.get("aggregate")
+        if map_by_mode is not None and aggregate_mode is not None:
+            raise ValueError(f"`{ctx}.relative_to` must use either `map_by` or `aggregate`, not both.")
+        if map_by_mode is None and aggregate_mode is None:
+            raise ValueError(f"`{ctx}.relative_to` must include either `map_by` or `aggregate`.")
+        if map_by_mode is not None and str(map_by_mode).strip().lower() not in SUPPORTED_MAP_BY:
+            raise ValueError(f"`{ctx}.relative_to.map_by` must be one of: row, bus_idx.")
+        if aggregate_mode is not None and str(aggregate_mode).strip().lower() not in SUPPORTED_AGGREGATES:
+            raise ValueError(f"`{ctx}.relative_to.aggregate` must be one of: max, min, mean, sum.")
+
+
+def _validate_random_ratio(config: Dict[str, Any], context: str) -> None:
+    if "random_ratio" not in config:
+        return
+    random_ratio = float(config["random_ratio"])
+    if random_ratio < 0 or random_ratio > 1:
+        raise ValueError(f"The random ratio for {context} must be between 0 and 1.")
+
+
+def _validate_rescale_rule_shape(rule_cfg: Any, rule_idx: int) -> None:
+    if not isinstance(rule_cfg, dict):
+        raise ValueError(f"rescale[{rule_idx}] must be a dictionary.")
+    rule_name = rule_cfg.get("name", f"rule_{rule_idx}")
+    if not isinstance(rule_cfg.get("target"), dict):
+        raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires a `target` dictionary.")
+    if "ratio" not in rule_cfg:
+        raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires `ratio`.")
+    sources_cfg = rule_cfg.get("sources")
+    if not isinstance(sources_cfg, list) or len(sources_cfg) == 0:
+        raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires a non-empty `sources` list.")
+    _validate_rescale_term_shape(rule_cfg["target"], f"rescale[{rule_idx}] '{rule_name}' target")
+    for src_idx, src_cfg in enumerate(sources_cfg):
+        _validate_rescale_term_shape(src_cfg, f"rescale[{rule_idx}] '{rule_name}' source[{src_idx}]")
+
+
+def _validate_rescale_term_shape(term_cfg: Any, context: str) -> None:
+    if not isinstance(term_cfg, dict):
+        raise ValueError(f"{context} must be a dictionary.")
+    if "strict" in term_cfg:
+        raise ValueError(f"{context}.strict is no longer supported; rescale terms are always strict.")
+    aggregate_mode = str(term_cfg.get("aggregate", "sum")).strip().lower()
+    if aggregate_mode not in SUPPORTED_AGGREGATES:
+        raise ValueError(f"{context}.aggregate must be one of: max, min, mean, sum.")
+    filter_cfg = term_cfg.get("filter")
+    if filter_cfg is not None and not isinstance(filter_cfg, dict):
+        raise ValueError(f"{context}.filter must be a dictionary.")
+
+
+def _resolve_base_case_path(base_case: str, base_dir: Optional[Path]) -> Optional[Path]:
+    case_path = Path(str(base_case)).expanduser()
+    if case_path.is_absolute() and case_path.exists():
+        return case_path
+    if base_dir is not None:
+        rel_path = (base_dir / case_path).resolve()
+        if rel_path.exists():
+            return rel_path
+    if case_path.exists():
+        return case_path.resolve()
+    return None
+
+
+def _call_case_function(namespace: Dict[str, Any], function_name: str, source_label: str) -> Dict[str, Any]:
+    case_func = namespace.get(function_name)
+    if not callable(case_func):
+        raise ValueError(
+            f"Could not find case function '{function_name}()' in {source_label}. "
+            "Local PYPOWER-style case files must define a function with the same "
+            "name as the file stem."
+        )
+    ppc = case_func()
+    if not isinstance(ppc, dict):
+        raise ValueError(f"Case function '{function_name}()' in {source_label} did not return a dictionary.")
+    return ppc
+
+
+def _load_pypower_case_from_py_path(case_path: Path) -> Dict[str, Any]:
+    function_name = case_path.stem
+    module_name = f"_gridforge_case_{function_name}"
+    spec = importlib.util.spec_from_file_location(module_name, case_path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Could not import local PYPOWER case file: {case_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return _call_case_function(vars(module), function_name, str(case_path))
+
+
+def _load_pypower_case_from_matpower_path(case_path: Path) -> Dict[str, Any]:
+    function_name = case_path.stem
+    source = convert_matpower_to_pypower(case_path, function_name=function_name)
+    namespace: Dict[str, Any] = {}
+    exec(compile(source, str(case_path), "exec"), namespace)
+    return _call_case_function(namespace, function_name, str(case_path))
+
+
+def _load_base_pypower_case(pypower_case_name: str, base_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Load a built-in PYPOWER case, local PYPOWER .py file, or MATPOWER .m file."""
+    case_ref = str(pypower_case_name).strip()
+    case_path = _resolve_base_case_path(case_ref, base_dir)
+    if case_path is not None:
+        suffix = case_path.suffix.lower()
+        if suffix == ".py":
+            return _load_pypower_case_from_py_path(case_path)
+        if suffix == ".m":
+            return _load_pypower_case_from_matpower_path(case_path)
+        raise ValueError(
+            f"Unsupported base case file extension '{case_path.suffix}' for {case_path}. "
+            "Use a built-in PYPOWER case name, a local .py case file, or a MATPOWER .m file."
+        )
+
+    if hasattr(pp, case_ref):
+        return getattr(pp, case_ref)()
+
+    raise ValueError(
+        f"Could not load base case '{pypower_case_name}'. Use a built-in PYPOWER case "
+        "name such as 'case14', or a path to a local .py or .m case file."
+    )
+
+
+def _load_base_pypower_sheets(pypower_case_name: str, base_dir: Optional[Path] = None) -> Dict[str, pd.DataFrame]:
+    """Load the base case into DataFrames with GridForge column names."""
+    ppc = _load_base_pypower_case(pypower_case_name, base_dir=base_dir)
     sheet_dict: Dict[str, pd.DataFrame] = {}
-    for key, value in ppc.items():
-        if key in ["version", "baseMVA"]:
+    for key in BASE_PYPOWER_SHEETS:
+        if key not in ppc:
+            if key == "gencost":
+                continue
+            raise ValueError(f"PYPOWER case '{pypower_case_name}' is missing required '{key}' data.")
+        value = ppc[key]
+        if key not in SHEET_COLUMNS:
             continue
         sheet_dict[key] = pd.DataFrame(
             value[:, :len(SHEET_COLUMNS[key])],
             columns=SHEET_COLUMNS[key],
         )
+    _merge_gencost_into_gen(sheet_dict)
     return sheet_dict
+
+
+def _merge_gencost_into_gen(sheet_dict: Dict[str, pd.DataFrame]) -> None:
+    """Merge PYPOWER/MATPOWER gencost rows into gen with COST_* columns."""
+    if "gencost" not in sheet_dict:
+        return
+    if "gen" not in sheet_dict:
+        raise ValueError("Cannot merge gencost because the PYPOWER case has no gen sheet.")
+    if len(sheet_dict["gen"]) != len(sheet_dict["gencost"]):
+        raise ValueError(
+            "Cannot merge gencost into gen because gen and gencost row counts differ: "
+            f"{len(sheet_dict['gen'])} != {len(sheet_dict['gencost'])}."
+        )
+    cost_df = sheet_dict["gencost"].rename(columns=GENCOST_COLUMN_MAP)
+    sheet_dict["gen"] = pd.concat(
+        [sheet_dict["gen"].reset_index(drop=True), cost_df.reset_index(drop=True)],
+        axis=1,
+    )
+    del sheet_dict["gencost"]
 
 
 def _renumber_bus_indices(sheet_dict: Dict[str, pd.DataFrame]) -> None:
@@ -56,16 +294,36 @@ def _renumber_bus_indices(sheet_dict: Dict[str, pd.DataFrame]) -> None:
     sheet_dict["branch"]["T_BUS_IDX"] = sheet_dict["branch"]["T_BUS_IDX"].map(bus_idx_map)
 
 
-def _save_sheet_dict_to_excel(sheet_dict: Dict[str, pd.DataFrame], output_path: str) -> None:
+def _build_metadata_sheet(cfg: Dict[str, Any], random_seed: int) -> pd.DataFrame:
+    """Build workbook metadata needed to load the generated case by itself."""
+    super_cfg = cfg.get("super_config", {})
+    metadata = {
+        "schema_version": "1",
+        "pypower_case_name": super_cfg.get("pypower_case_name"),
+        "baseMVA": super_cfg.get("baseMVA"),
+        "random_seed": random_seed,
+    }
+    return pd.DataFrame(
+        [{"KEY": key, "VALUE": value} for key, value in metadata.items()]
+    )
+
+
+def _save_sheet_dict_to_excel(
+    sheet_dict: Dict[str, pd.DataFrame],
+    output_path: str,
+    metadata_df: Optional[pd.DataFrame] = None,
+) -> None:
     with pd.ExcelWriter(output_path) as writer:
         for key, value in sheet_dict.items():
             value.to_excel(writer, sheet_name=key, index=False)
+        if metadata_df is not None:
+            metadata_df.to_excel(writer, sheet_name=METADATA_SHEET_NAME, index=False)
 
 def construct_grid_config(config_path: str, output_path: str, random_seed: int) -> None:
     """
     Combine the pypower case with the extra config (in .yaml) and save it as an excel file.
     
-    Creates an excel file where each sheet is a top-level key such as bus, gen, gencost,
+    Creates an excel file where each sheet is a top-level key such as bus, gen,
     load, branch, solar, wind, or any user-defined component. Each sheet contains the
     corresponding entries.
     
@@ -84,13 +342,18 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
     
     cfg = _load_gridforge_yaml(config_path)
     print(f"Reading config from {config_path}")
+    _validate_gridforge_yaml(cfg)
 
     grid_cfg = cfg['grid_config']
     super_cfg = cfg['super_config']
     rescale_cfg = cfg.get('rescale', [])
     np.random.seed(random_seed)
     
-    sheet_dict = _load_base_pypower_sheets(super_cfg["pypower_case_name"])
+    config_base_dir = Path(config_path).expanduser().resolve().parent
+    sheet_dict = _load_base_pypower_sheets(
+        super_cfg["pypower_case_name"],
+        base_dir=config_base_dir,
+    )
     _renumber_bus_indices(sheet_dict)
     # --------------------------
     # Parsing / assignment helpers
@@ -118,9 +381,8 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
                 f"does not equal to 1 or match the number of rows in the {sheet_name} sheet ({n_rows})"
             )
         if "random_ratio" in config:
-            random_ratio = config['random_ratio']
-            if random_ratio > 1:
-                raise ValueError(f"The random ratio {random_ratio} must be less than or equal to 1")
+            random_ratio = float(config['random_ratio'])
+            _validate_random_ratio(config, f"{sheet_name}.{column_name}")
             values = values * (1 + np.random.uniform(-random_ratio, random_ratio, n_rows))
         
         sheet_dict[sheet_name][column_name] = values
@@ -144,9 +406,8 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
                 f"does not match the number of rows in the {sheet_name} sheet ({n_rows})"
             )
         if "random_ratio" in config:
-            random_ratio = config['random_ratio']
-            if random_ratio > 1:
-                raise ValueError(f"The random ratio {random_ratio} must be less than or equal to 1")
+            random_ratio = float(config['random_ratio'])
+            _validate_random_ratio(config, f"{sheet_name}.{column_name}")
             ratio = ratio * (1 + np.random.uniform(-random_ratio, random_ratio, n_rows))
         
         if len(base_values) == 1:
@@ -247,12 +508,12 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         bus_idx_source_col = _relative_bus_key_column(ref_sheet)
         if bus_idx_target_col is None:
             raise ValueError(
-                f"`relative_to.map_by=bus` for '{target_sheet}.{target_column}' requires "
+                f"`relative_to.map_by=bus_idx` for '{target_sheet}.{target_column}' requires "
                 f"the target sheet '{target_sheet}' to have a BUS_IDX column."
             )
         if bus_idx_source_col is None:
             raise ValueError(
-                f"`relative_to.map_by=bus` for '{target_sheet}.{target_column}' requires "
+                f"`relative_to.map_by=bus_idx` for '{target_sheet}.{target_column}' requires "
                 f"the source sheet '{ref_sheet}' to have a BUS_IDX column."
             )
 
@@ -272,7 +533,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         missing_keys = [int(b) for b in bus_idx_target_values if int(b) not in src_map]
         if missing_keys:
             raise ValueError(
-                f"`relative_to.map_by=bus` for '{target_sheet}.{target_column}' could not find "
+                f"`relative_to.map_by=bus_idx` for '{target_sheet}.{target_column}' could not find "
                 f"source entries in '{ref_sheet}.{bus_idx_source_col}' for target buses: {missing_keys[:10]}."
             )
         return np.array(
@@ -296,7 +557,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
             return np.array([np.sum(ref_values)])
         raise ValueError(
             f"Unsupported relative mapping for '{target_sheet}.{target_column}'. "
-            f"`map_by` must be one of: row, bus. `aggregate` must be one of: max, min, mean, sum."
+            f"`map_by` must be one of: row, bus_idx. `aggregate` must be one of: max, min, mean, sum."
         )
 
     def _resolve_relative_base_values(
@@ -329,7 +590,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
                 ref_values,
                 n_target_rows,
             )
-        elif map_by_mode == "bus":
+        elif map_by_mode == "bus_idx":
             base = _resolve_relative_bus_base(
                 target_sheet,
                 target_column,
@@ -407,22 +668,25 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
 
         for token in bus_type_list:
             if isinstance(token, (int, np.integer)):
+                if int(token) == 4:
+                    mask = mask | (pd_series.values > 0)
+                    continue
                 if int(token) not in [1, 2, 3]:
                     raise ValueError(
                         f"Unsupported {ctx} value '{token}' for key '{component_name}'. "
-                        "Use 1, 2, 3, or positive_pd."
+                        "Use 1, 2, 3, 4, or positive_pd."
                     )
                 mask = mask | (bus_type_series.values == int(token))
             elif isinstance(token, str):
                 t = token.strip().lower()
                 if t in ["1", "2", "3"]:
                     mask = mask | (bus_type_series.values == int(t))
-                elif t in ["positive_pd", "pd_positive"]:
+                elif t in ["4", "positive_pd", "pd_positive"]:
                     mask = mask | (pd_series.values > 0)
                 else:
                     raise ValueError(
                         f"Unsupported {ctx} value '{token}' for key '{component_name}'. "
-                        "Use 1, 2, 3, or positive_pd."
+                        "Use 1, 2, 3, 4, or positive_pd."
                     )
             else:
                 raise ValueError(
@@ -527,50 +791,11 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
             raise ValueError(
                 f"BUS_IDX.remove_gen for key '{component_name}' requires gen.BUS_IDX."
             )
-        if "gencost" not in sheet_dict:
-            raise ValueError(
-                f"BUS_IDX.remove_gen for key '{component_name}' requires 'gencost' sheet."
-            )
-        if len(sheet_dict["gen"]) != len(sheet_dict["gencost"]):
-            raise ValueError(
-                f"BUS_IDX.remove_gen for key '{component_name}' requires gen and gencost to have aligned rows."
-            )
         gen_bus_values = pd.to_numeric(sheet_dict["gen"]["BUS_IDX"], errors="coerce")
         remove_mask = gen_bus_values.isin(set(int(i) for i in target_idx))
         if not remove_mask.any():
             return
         sheet_dict["gen"] = sheet_dict["gen"].loc[~remove_mask].reset_index(drop=True)
-        sheet_dict["gencost"] = sheet_dict["gencost"].loc[~remove_mask].reset_index(drop=True)
-
-    def _infer_custom_sheet_row_count(component_name: str, component_cfg: Dict[str, Any]) -> int:
-        candidate_lengths: List[int] = []
-        for col_name, config in component_cfg.items():
-            if "value" not in config:
-                continue
-            vlen = len(config["value"])
-            if vlen > 1:
-                candidate_lengths.append(vlen)
-            if _parse_format(config, f"{component_name}.{col_name}") == "relative":
-                rel_cfg = config.get("relative_to", None)
-                if isinstance(rel_cfg, dict):
-                    map_by_mode = str(rel_cfg.get("map_by", "")).strip().lower()
-                    if map_by_mode == "row":
-                        ref_sheet = rel_cfg.get("sheet")
-                        ref_col = rel_cfg.get("column")
-                    else:
-                        ref_sheet = None
-                        ref_col = None
-                    if ref_sheet in sheet_dict and ref_col in sheet_dict[ref_sheet].columns:
-                        candidate_lengths.append(len(sheet_dict[ref_sheet][ref_col].values))
-
-        if len(candidate_lengths) == 0:
-            return 1
-        if len(set(candidate_lengths)) == 1:
-            return candidate_lengths[0]
-        raise ValueError(
-            f"Cannot infer a unique row count for custom key '{component_name}' without BUS_IDX. "
-            f"Found candidate lengths: {sorted(set(candidate_lengths))}."
-        )
 
     def _build_bus_indexed_custom_sheet(component_name: str, component_cfg: Dict[str, Any]) -> None:
         sheet_dict[component_name] = pd.DataFrame(columns=component_cfg.keys())
@@ -585,19 +810,12 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
             _apply_column_config(component_name, col_name, config)
         _remove_generators_on_buses_for_bus_idx(component_name, target_idx, remove_gen)
 
-    def _build_non_bus_indexed_custom_sheet(component_name: str, component_cfg: Dict[str, Any]) -> None:
-        nrows = _infer_custom_sheet_row_count(component_name, component_cfg)
-        sheet_dict[component_name] = pd.DataFrame(index=np.arange(nrows), columns=component_cfg.keys())
-        for col_name, config in component_cfg.items():
-            _apply_column_config(component_name, col_name, config)
-
     def _build_custom_sheet(component_name: str, component_cfg: Dict[str, Any]) -> None:
         """
         Build a user-defined custom component sheet.
 
-        If BUS_IDX is provided, rows are determined by BUS_IDX selection.
-        If BUS_IDX is not provided, rows are inferred from value lengths and/or
-        relative_to references.
+        Custom sheets are assets attached to buses. BUS_IDX is required and determines
+        row count and bus placement.
         """
         # add status config
         component_cfg = dict(component_cfg)
@@ -608,13 +826,13 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
                 "value": [1],
             }
 
-        if "BUS_IDX" in component_cfg:
-            _build_bus_indexed_custom_sheet(component_name, component_cfg)
-            return
-
-        # No BUS_IDX: fully user-defined table; infer row count from config.
-        # TODO: Should be avoided?
-        _build_non_bus_indexed_custom_sheet(component_name, component_cfg)
+        if "BUS_IDX" not in component_cfg:
+            raise ValueError(
+                f"Custom sheet '{component_name}' must define BUS_IDX. "
+                "All custom sheets must be attached to buses through BUS_IDX; "
+                "use a core sheet for non-asset tables."
+            )
+        _build_bus_indexed_custom_sheet(component_name, component_cfg)
 
     # --------------------------
     # Rescale layer
@@ -685,9 +903,8 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
     def _resolve_rescale_term_value(term_cfg: Dict[str, Any], ctx: str) -> float:
         if not isinstance(term_cfg, dict):
             raise ValueError(f"{ctx} must be a dictionary.")
-        strict = term_cfg.get("strict", True)
-        if not isinstance(strict, bool):
-            raise ValueError(f"{ctx}.strict must be boolean.")
+        if "strict" in term_cfg:
+            raise ValueError(f"{ctx}.strict is no longer supported; rescale terms are always strict.")
 
         ref_sheet = term_cfg.get("sheet", None)
         ref_col = term_cfg.get("column", None)
@@ -695,23 +912,15 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         filter_cfg = term_cfg.get("filter", None)
 
         if ref_sheet is None or ref_col is None:
-            if strict:
-                raise ValueError(f"{ctx} must include both `sheet` and `column`.")
-            return 0.0
+            raise ValueError(f"{ctx} must include both `sheet` and `column`.")
         if ref_sheet not in sheet_dict:
-            if strict:
-                raise ValueError(f"{ctx}.sheet '{ref_sheet}' does not exist.")
-            return 0.0
+            raise ValueError(f"{ctx}.sheet '{ref_sheet}' does not exist.")
         if ref_col not in sheet_dict[ref_sheet].columns:
-            if strict:
-                raise ValueError(f"{ctx}.column '{ref_col}' does not exist in sheet '{ref_sheet}'.")
-            return 0.0
+            raise ValueError(f"{ctx}.column '{ref_col}' does not exist in sheet '{ref_sheet}'.")
 
         ref_mask = _build_rescale_filter_mask(ref_sheet, filter_cfg, ctx)
         if np.sum(ref_mask) == 0:
-            if strict:
-                raise ValueError(f"{ctx}.filter selected zero rows in sheet '{ref_sheet}'.")
-            return 0.0
+            raise ValueError(f"{ctx}.filter selected zero rows in sheet '{ref_sheet}'.")
         ref_values = sheet_dict[ref_sheet].loc[ref_mask, ref_col]
         return _aggregate_numeric_values(ref_values, str(aggregate_mode), f"{ctx} ({ref_sheet}.{ref_col})")
 
@@ -719,21 +928,23 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         rule_name: str,
         rule_idx: int,
         target_cfg: Dict[str, Any],
-    ) -> Tuple[str, str, str, Optional[Dict[str, Any]], bool]:
+    ) -> Tuple[str, str, str, Optional[Dict[str, Any]]]:
         target_sheet = target_cfg.get("sheet", None)
         target_col = target_cfg.get("column", None)
         target_aggregate = target_cfg.get("aggregate", "sum")
         target_filter = target_cfg.get("filter", None)
-        target_strict = target_cfg.get("strict", True)
-        if not isinstance(target_strict, bool):
-            raise ValueError(f"rescale[{rule_idx}] '{rule_name}' target.strict must be boolean.")
+        if "strict" in target_cfg:
+            raise ValueError(
+                f"rescale[{rule_idx}] '{rule_name}' target.strict is no longer supported; "
+                "rescale terms are always strict."
+            )
         if target_sheet not in sheet_dict:
             raise ValueError(f"rescale[{rule_idx}] '{rule_name}' target sheet '{target_sheet}' does not exist.")
         if target_col not in sheet_dict[target_sheet].columns:
             raise ValueError(
                 f"rescale[{rule_idx}] '{rule_name}' target column '{target_col}' does not exist in '{target_sheet}'."
             )
-        return target_sheet, target_col, str(target_aggregate), target_filter, target_strict
+        return target_sheet, target_col, str(target_aggregate), target_filter
 
     def _resolve_rescale_source_total(
         rule_name: str,
@@ -761,16 +972,13 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         target_col: str,
         target_aggregate: str,
         target_filter: Optional[Dict[str, Any]],
-        target_strict: bool,
         target_value: float,
     ) -> None:
         target_mask = _build_rescale_filter_mask(
             target_sheet, target_filter, f"rescale[{rule_idx}] '{rule_name}' target"
         )
         if np.sum(target_mask) == 0:
-            if target_strict:
-                raise ValueError(f"rescale[{rule_idx}] '{rule_name}' target.filter selected zero rows.")
-            return
+            raise ValueError(f"rescale[{rule_idx}] '{rule_name}' target.filter selected zero rows.")
 
         target_values = sheet_dict[target_sheet].loc[target_mask, target_col]
         current_target_aggregate = _aggregate_numeric_values(
@@ -808,7 +1016,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         target_cfg = rule_cfg.get("target", None)
         if not isinstance(target_cfg, dict):
             raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires a `target` dictionary.")
-        target_sheet, target_col, target_aggregate, target_filter, target_strict = _validate_rescale_target(
+        target_sheet, target_col, target_aggregate, target_filter = _validate_rescale_target(
             rule_name, rule_idx, target_cfg
         )
         target_value = _resolve_rescale_source_total(rule_name, rule_idx, rule_cfg)
@@ -819,7 +1027,6 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
             target_col,
             target_aggregate,
             target_filter,
-            target_strict,
             target_value,
         )
 
@@ -846,6 +1053,10 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
     for rule_idx, rule_cfg in enumerate(rescale_cfg):
         _apply_rescale_rule(rule_cfg, rule_idx)
 
-    _save_sheet_dict_to_excel(sheet_dict, output_path)
+    _save_sheet_dict_to_excel(
+        sheet_dict,
+        output_path,
+        metadata_df=_build_metadata_sheet(cfg, random_seed),
+    )
             
     print(f"Saved the grid configuration excel file to {output_path}")

@@ -37,21 +37,22 @@ def _get_uc_views(grid: Grid):
     """
     Collect the sheet views used by this UC example.
 
-    GridForge now exposes:
+    GridForge exposes:
     - ``grid.core`` for schema-defined sheets such as ``gen`` and ``branch``
-    - ``grid.custom`` for BUS-backed custom sheets such as ``load``, ``solar``,
+    - ``grid.custom`` for custom sheets attached to buses, such as ``load``, ``solar``,
       and ``wind``
+    - convenience aliases such as ``grid.gen`` and ``grid.load`` for safe sheet
+      names
 
     This helper keeps those lookups in one place so the rest of the example
     reads more like an optimization model and less like repeated plumbing.
     """
     return {
-        "gen": grid.core.gen,
-        "branch": grid.core.branch,
-        "gencost": grid.core.gencost,
-        "load": grid.custom["load"],
-        "solar": grid.custom["solar"],
-        "wind": grid.custom["wind"],
+        "gen": grid.gen,
+        "branch": grid.branch,
+        "load": grid.load,
+        "solar": grid.solar,
+        "wind": grid.wind,
     }
 
 
@@ -208,7 +209,7 @@ def add_objective(m: OptModel, T: int):
     - load-shedding penalty.
     """
     uc = _get_uc_views(m.grid)
-    gencost_c = uc["gencost"]
+    gen_c = uc["gen"]
     load_c = uc["load"]
     solar_c = uc["solar"]
     wind_c = uc["wind"]
@@ -217,10 +218,10 @@ def add_objective(m: OptModel, T: int):
     pg, ug, yg, zg, ls, solarc, windc = m.vars["pg"], m.vars["ug"], m.vars["yg"], m.vars["zg"], m.vars["ls"], m.vars["solarc"], m.vars["windc"]
     
     for t in range(T):
-        m.add_objective_term(cp.sum(cp.multiply(gencost_c.first * base_mva, pg[t])))
-        m.add_objective_term(cp.sum(cp.multiply(gencost_c.startup * base_mva, yg[t])))
-        m.add_objective_term(cp.sum(cp.multiply(gencost_c.shutdown * base_mva, zg[t])))
-        m.add_objective_term(cp.sum(cp.multiply(gencost_c.zero * base_mva, ug[t])))
+        m.add_objective_term(cp.sum(cp.multiply(gen_c.cost_first * base_mva, pg[t])))
+        m.add_objective_term(cp.sum(cp.multiply(gen_c.cost_startup * base_mva, yg[t])))
+        m.add_objective_term(cp.sum(cp.multiply(gen_c.cost_shutdown * base_mva, zg[t])))
+        m.add_objective_term(cp.sum(cp.multiply(gen_c.cost_zero * base_mva, ug[t])))
         m.add_objective_term(cp.sum(cp.multiply(solar_c.curtail_cost * base_mva, solarc[t])))
         m.add_objective_term(cp.sum(cp.multiply(wind_c.curtail_cost * base_mva, windc[t])))
         m.add_objective_term(cp.sum(cp.multiply(load_c.shed_cost * base_mva, ls[t])))
@@ -232,11 +233,12 @@ def build_uc(grid: Grid, T: int, ug_init, pg_init, on_init, off_init):
     This is the main entry point if you want to reuse the example as a template
     for your own formulation.
     """
-    # In the new API, schema-defined network objects live under grid.core
-    # while BUS_IDX-backed custom sheets such as load / solar / wind live
-    # under grid.custom. If the YAML used `BUS_IDX.remove_gen`, the generator
-    # and gencost rows have already been removed during construction, so this
-    # model works directly with the post-replacement case.
+    # Schema-defined network objects remain available under grid.core, and
+    # Custom sheets attached to buses remain available under grid.custom. The
+    # example uses convenience aliases such as grid.gen and grid.load. If the
+    # YAML used `BUS_IDX.remove_gen`, generator rows have already been removed
+    # during construction, so this model works directly with the
+    # post-replacement case.
     m = OptModel(grid)
     
     add_variable(m, T)
@@ -333,8 +335,13 @@ def rescale_line_limit(data: Data, grid: Grid, T: int,
 if __name__ == "__main__":
     
     from gridforge.construct import construct_grid_config
+    from gridforge.data import (
+        load_bus_data_assignment,
+        materialize_bus_data_assignment,
+        save_bus_data_assignment,
+        suggest_bus_data_assignment,
+    )
     from gridforge.plot import draw_grid_topology, draw_grid_topology_interactive
-    from gridforge.reference_data.tx123bt import construct_tx123bt_grid_data
     # ------------------------------------------------------------------
     # Step 0: locate the example folder and the repo-level data directory.
     # ------------------------------------------------------------------
@@ -352,8 +359,9 @@ if __name__ == "__main__":
     # 3. apply optional rescale rules for aggregate balancing.
     config_path_yaml = str(HERE / "14bus_config.yaml")
     config_path_xlsx = str(HERE / "14bus_config.xlsx")
+    data_assignment_path = str(HERE / "14bus_data_assignment.yaml")
+    resolved_assignment_path = str(HERE / "14bus_data_assignment_resolved.yaml")
     data_dir = str(HERE / "14bus_data")
-    processed_data_dir = str(REPO / "data" / "bus_data")
     random_seed = 404  # Set random seed for reproducibility
     verbose = 0
     T = 24    
@@ -374,17 +382,50 @@ if __name__ == "__main__":
     draw_grid_topology_interactive(config_path_xlsx, output_path=topology_html)
     
     # ------------------------------------------------------------------
-    # Step 4: assign TX-123BT per-bus time series to the generated case.
+    # Step 4: generate and materialize bus-data assignment.
     # ------------------------------------------------------------------
-    construct_tx123bt_grid_data(
-        config_path_xlsx, data_dir, random_seed, processed_data_dir, verbose=verbose
-    )
+    # The checked-in assignment YAML is a generic signal template. It does not
+    # hard-code generated bus -> source CSV mappings. Instead, GridForge reads
+    # BUS_IDX values from the generated workbook and suggests a concrete mapping
+    # from the available source CSV pool.
+    assignment_template = load_bus_data_assignment(data_assignment_path)
+    source_data_dir = assignment_template.get("source_data_dir", "data/bus_data")
+    source_data_path = Path(source_data_dir)
+    if not source_data_path.is_absolute():
+        source_data_path = REPO / source_data_path
+
+    if source_data_path.exists():
+        assignment = suggest_bus_data_assignment(
+            grid_xlsx_path=config_path_xlsx,
+            source_data_dir=str(source_data_path),
+            signals=assignment_template["signals"],
+            output_data_dir=data_dir,
+            random_seed=random_seed,
+        )
+        save_bus_data_assignment(assignment, resolved_assignment_path)
+        materialize_bus_data_assignment(
+            grid_xlsx_path=config_path_xlsx,
+            assignment=assignment,
+            output_data_dir=data_dir,
+            verbose=verbose,
+        )
+        print(f"Saved resolved bus-data assignment to {resolved_assignment_path}")
+    elif Path(data_dir).exists():
+        print(
+            f"Source data pool not found at {source_data_path}. "
+            f"Using existing prepared bus data under {data_dir}."
+        )
+    else:
+        raise FileNotFoundError(
+            f"Missing source data pool: {source_data_path}. "
+            "Run `bash scripts/generate_tx123bt_bus_data.sh` from the repo root first."
+        )
     
     # ------------------------------------------------------------------
     # Step 5: load the optimization-facing Grid and Data objects.
     # ------------------------------------------------------------------
     data = Data(config_path_xlsx, data_dir=data_dir, sheet_names=["load", "solar", "wind"])
-    grid = Grid(config_path_xlsx, config_path_yaml, verbose=verbose)
+    grid = Grid(config_path_xlsx, verbose=verbose)
     
     print("data.get_series('load').shape: ", data.get_series("load").shape)
     print("data.get_series('solar').shape: ", data.get_series("solar").shape)

@@ -4,7 +4,9 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .pytest_cache/
+.venv/
 build/
+site/
 # *.xlsx
 14bus_data/
 data/bus_data/
@@ -13,5 +15,6 @@ data/Data_public/
 *.egg-info/
 examples/14bus_uc/*.png
 examples/14bus_uc/*.html
+examples/14bus_uc/14bus_data_assignment_resolved.yaml
 .DS_Store
 .codex

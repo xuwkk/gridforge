@@ -1,0 +1,24 @@
+source_data_dir: data/bus_data
+output_data_dir: examples/14bus_uc/14bus_data
+signals:
+  load:
+    workbook_sheet: load
+    source_column: load
+    output_column: load
+    scale_to:
+      column: PMAX
+      method: max
+  solar:
+    workbook_sheet: solar
+    source_column: solar
+    output_column: solar
+    scale_to:
+      column: PMAX
+      method: max
+  wind:
+    workbook_sheet: wind
+    source_column: wind
+    output_column: wind
+    scale_to:
+      column: PMAX
+      method: max

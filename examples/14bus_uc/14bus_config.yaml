@@ -84,6 +84,70 @@ grid_config:
       format: absolute
       value:
       - 2
+    COST_STARTUP:
+      format: absolute
+      value:
+      - 60
+      - 40
+      - 50
+      - 30
+      - 25
+    COST_SHUTDOWN:
+      format: absolute
+      value:
+      - 10
+      - 15
+      - 5
+      - 17
+      - 8
+    COST_SECOND:
+      format: absolute
+      value:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+    COST_FIRST:
+      format: absolute
+      value:
+      - 3
+      - 1
+      - 6
+      - 4
+      - 5
+    COST_ZERO:
+      format: absolute
+      value:
+      - 20
+      - 30
+      - 40
+      - 18
+      - 48
+    COST_STORAGE:
+      format: absolute
+      value:
+      - 20.0
+      - 15.0
+      - 40.0
+      - 30.0
+      - 35.0
+    COST_RD_UP:
+      format: absolute
+      value:
+      - 26
+      - 20
+      - 24
+      - 16
+      - 20
+    COST_RD_DOWN:
+      format: absolute
+      value:
+      - 10
+      - 2
+      - 9
+      - 6
+      - 8
   branch:
     TAP:
       format: absolute
@@ -120,71 +184,6 @@ grid_config:
       - 36.44927022236042
       - 10.0
       - 33.01363503268947
-  gencost:
-    STARTUP:
-      format: absolute
-      value:
-      - 60
-      - 40
-      - 50
-      - 30
-      - 25
-    SHUTDOWN:
-      format: absolute
-      value:
-      - 10
-      - 15
-      - 5
-      - 17
-      - 8
-    SECOND:
-      format: absolute
-      value:
-      - 0.0
-      - 0.0
-      - 0.0
-      - 0.0
-      - 0.0
-    FIRST:
-      format: absolute
-      value:
-      - 3
-      - 1
-      - 6
-      - 4
-      - 5
-    ZERO:
-      format: absolute
-      value:
-      - 20
-      - 30
-      - 40
-      - 18
-      - 48
-    STORAGE:
-      format: absolute
-      value:
-      - 20.0
-      - 15.0
-      - 40.0
-      - 30.0
-      - 35.0
-    RD_UP:
-      format: absolute
-      value:
-      - 26
-      - 20
-      - 24
-      - 16
-      - 20
-    RD_DOWN:
-      format: absolute
-      value:
-      - 10
-      - 2
-      - 9
-      - 6
-      - 8
   solar:
     BUS_IDX:
       format: absolute
@@ -200,12 +199,12 @@ grid_config:
       relative_to:
         sheet: gen
         column: PMAX
-        map_by: bus
+        map_by: bus_idx
     CURTAIL_COST:
       format: relative
       relative_to:
-        sheet: gencost
-        column: FIRST
+        sheet: gen
+        column: COST_FIRST
         aggregate: max
       random_ratio: 0.2
       value:
@@ -227,12 +226,12 @@ grid_config:
       relative_to:
         sheet: gen
         column: PMAX
-        map_by: bus
+        map_by: bus_idx
     CURTAIL_COST:
       format: relative
       relative_to:
-        sheet: gencost
-        column: FIRST
+        sheet: gen
+        column: COST_FIRST
         aggregate: max
       random_ratio: 0.2
       value:
@@ -244,7 +243,7 @@ grid_config:
       - 1
       relative_to:
         bus_type:
-        - positive_pd
+        - 4
     PMAX:
       format: relative
       value:
@@ -252,7 +251,7 @@ grid_config:
       relative_to:
         sheet: bus
         column: PD
-        map_by: bus
+        map_by: bus_idx
     SHED_COST:
       format: absolute
       random_ratio: 0.2

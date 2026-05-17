@@ -1,0 +1,31 @@
+site_name: GridForge
+site_description: Power-system configuration and optimization toolkit
+repo_url: https://github.com/xuwkk/gridforge
+repo_name: xuwkk/gridforge
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Workflow: workflow.md
+  - Visual Config App: visual-app.md
+  - Configuration: configuration.md
+  # - PYPOWER Cases: pypower-case.md
+  - Bus Data Assignment: bus-data-assignment.md
+  - Grid And Data Access: grid-data-access.md
+  - TX-123BT Workflow: tx123bt.md
+  - Examples: examples.md
+  - Copyright And License: copyright.md
+  - GitHub Pages: github-pages.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight

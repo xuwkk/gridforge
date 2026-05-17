@@ -64,7 +64,6 @@ def _load_bus_csv_data(data_dir: Path) -> dict[int, pd.DataFrame]:
 def _summarize_config(workbook: dict[str, pd.DataFrame]) -> None:
     """Print configuration-level capacity and cost summaries."""
     gen_config = workbook["gen"]
-    gencost_config = workbook["gencost"]
     load_config = workbook["load"]
     wind_config = workbook["wind"]
     solar_config = workbook["solar"]
@@ -80,7 +79,7 @@ def _summarize_config(workbook: dict[str, pd.DataFrame]) -> None:
     print(f"Configured solar PMAX by row: {solar_config['PMAX'].tolist()}")
     print(f"Configured wind PMAX by row: {wind_config['PMAX'].tolist()}")
 
-    first_order_cost = np.max(gencost_config["FIRST"].values)
+    first_order_cost = np.max(gen_config["COST_FIRST"].values)
     solar_curtail_cost = solar_config["CURTAIL_COST"].values
     wind_curtail_cost = wind_config["CURTAIL_COST"].values
     load_shed_cost = load_config["SHED_COST"].values

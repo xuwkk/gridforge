@@ -1,40 +1,49 @@
-# Grid Entries Guide
+# Grid And Data Access
 
-This note explains what becomes available after you instantiate
-[`Grid`](/home/wx/my_project/gridforge/gridforge/opt.py), and how to retrieve
-entries safely when building your own optimization model.
+This guide explains what becomes available after you instantiate
+[`Grid`](https://github.com/xuwkk/gridforge/blob/main/gridforge/opt.py), how
+`Data(...)` lines up time series with workbook rows, and how to retrieve entries
+when building your own optimization model.
 
 ## Quick start
 
 ```python
 from gridforge.opt import Grid
 
-grid = Grid("14bus_config.xlsx", "14bus_config.yaml", verbose=0)
+grid = Grid("14bus_config.xlsx", verbose=0)
 ```
 
 After this, the main access layers are:
 
 - `grid.sheets[...]`: raw Excel tables as pandas DataFrames
 - `grid.core.*`: schema-defined core sheets with derived network objects
-- `grid.custom[...]`: BUS_IDX-backed custom sheets such as `load`, `solar`, and `wind`
+- `grid.custom[...]`: custom sheets attached to buses, such as `load`, `solar`,
+  and `wind`
+- top-level aliases such as `grid.gen`, `grid.branch`, `grid.load`, and
+  `grid.solar` when names are safe Python attributes
 
 ## Top-level entries
 
 `Grid(...)` defines these top-level entries:
 
 - `grid.baseMVA`: system base power used for per-unit scaling in optimization code
-- `grid.nbus`: number of buses in the case
-- `grid.ngen`: number of generator rows in the `gen` sheet
-- `grid.nbranch`: number of branch rows in the `branch` sheet
+- `grid.nbus`: number of buses in the case; same as `grid.bus.n`
+- `grid.ngen`: number of generator rows in the `gen` sheet; same as
+  `grid.gen.n`
+- `grid.nbranch`: number of branch rows in the `branch` sheet; same as
+  `grid.branch.n`
 - `grid.sheets`: raw Excel workbook tables as DataFrames
 - `grid.core`: schema-defined core sheet wrappers
-- `grid.custom`: generic BUS_IDX-backed custom sheet wrappers
+- `grid.custom`: generic wrappers for custom sheets attached to buses
+- `grid.aliases`: convenience aliases registered at the top level
+- `grid.metadata`: workbook metadata such as `baseMVA` and base case name
 
 It also provides small discovery helpers:
 
 - `grid.sheet_names()`: list all sheet names loaded from the Excel workbook
 - `grid.core_names()`: list the available core sheet wrappers
-- `grid.custom_names()`: list the available BUS-backed custom sheets
+- `grid.custom_names()`: list the available custom sheets attached to buses
+- `grid.alias_names()`: list top-level aliases such as `gen`, `branch`, `load`
 - `grid.sheet(name)`: fetch one raw sheet as a DataFrame
 - `grid.core_sheet(name)`: fetch one core wrapper by name
 - `grid.custom_sheet(name)`: fetch one custom wrapper by name
@@ -60,12 +69,6 @@ grid.sheet("bus")
 grid.sheet("solar")
 ```
 
-This is the most transparent access path and is useful for:
-
-- debugging
-- ad hoc inspection
-- DataFrame operations that are easier outside the wrapper classes
-
 ## 2. Core sheets: `grid.core.*`
 
 `grid.core` contains the schema-defined sheets:
@@ -73,7 +76,6 @@ This is the most transparent access path and is useful for:
 - `grid.core.bus`
 - `grid.core.gen`
 - `grid.core.branch`
-- `grid.core.gencost`
 
 These are wrapper objects, not raw DataFrames. Each wrapper stores:
 
@@ -117,7 +119,7 @@ grid.core.bus.pd
 
 ### `grid.core.gen`
 
-`grid.core.gen` is the generator sheet wrapped as a BUS-backed object.
+`grid.core.gen` is the generator sheet wrapped as an object attached to buses.
 
 Main entries:
 
@@ -133,11 +135,17 @@ Plus lowercased raw columns such as:
 - `grid.core.gen.pmin`: minimum active power output
 - `grid.core.gen.pg`: active power setpoint from the workbook
 - `grid.core.gen.qmax`: maximum reactive power output
+- `grid.core.gen.cost_startup`: startup cost coefficient
+- `grid.core.gen.cost_shutdown`: shutdown cost coefficient
+- `grid.core.gen.cost_second`: quadratic cost coefficient
+- `grid.core.gen.cost_first`: linear cost coefficient
+- `grid.core.gen.cost_zero`: fixed no-load cost coefficient
 
 Typical uses:
 
 ```python
 grid.core.gen.pmax
+grid.core.gen.cost_first
 grid.core.gen.bus_idx
 grid.core.gen.Cbus
 grid.core.gen.active_mask()
@@ -176,34 +184,10 @@ grid.core.branch.ptdf
 grid.core.branch.pmax
 ```
 
-### `grid.core.gencost`
+## 3. Custom Sheets Attached To Buses: `grid.custom[...]`
 
-`grid.core.gencost` stores generator cost data aligned with `gen`.
-
-Main entries:
-
-- `grid.core.gencost.table`: raw `gencost` DataFrame
-- `grid.core.gencost.n`: number of generator cost rows
-
-Plus lowercased raw cost columns, excluding `MODEL` and `ORDER`:
-
-- `grid.core.gencost.startup`: startup cost coefficient
-- `grid.core.gencost.shutdown`: shutdown cost coefficient
-- `grid.core.gencost.second`: quadratic cost coefficient
-- `grid.core.gencost.first`: linear cost coefficient
-- `grid.core.gencost.zero`: fixed no-load cost coefficient
-
-Typical uses:
-
-```python
-grid.core.gencost.first
-grid.core.gencost.startup
-```
-
-## 3. Custom BUS-backed sheets: `grid.custom[...]`
-
-Every non-core sheet with a `BUS_IDX` column becomes a generic custom wrapper
-under `grid.custom[...]`.
+Every non-core sheet is required to define `BUS_IDX` and becomes a generic
+custom wrapper under `grid.custom[...]`.
 
 Examples:
 
@@ -220,7 +204,7 @@ grid.custom_sheet("load")
 grid.custom_sheet("solar")
 ```
 
-Each custom sheet defines:
+Each custom sheet wrapper defines:
 
 - `name`: sheet name as stored in the workbook
 - `table`: raw DataFrame for that custom sheet
@@ -248,6 +232,67 @@ grid.custom["solar"].pmax
 grid.custom["wind"].active_rows()
 ```
 
+## 4. Convenience aliases: `grid.<sheet>`
+
+`Grid(...)` also registers safe top-level aliases:
+
+```python
+grid.bus      # same object as grid.core.bus
+grid.gen      # same object as grid.core.gen
+grid.branch   # same object as grid.core.branch
+grid.load     # same object as grid.custom["load"]
+grid.solar    # same object as grid.custom["solar"]
+```
+
+Aliases are added only when the sheet name is a valid Python identifier and does
+not collide with an existing `Grid` attribute or method. Explicit access through
+`grid.core.*` and `grid.custom[...]` remains the clearest form for shared code.
+
+## 5. Time-series data: `Data(...)`
+
+`Data(...)` loads case-specific `bus_<BUS_IDX>.csv` files created by
+`materialize_bus_data_assignment(...)`. It uses the workbook to decide which
+bus files to open and in what order sheet-backed profile columns should appear.
+The full bus CSV files remain available for contextual data access.
+
+```python
+from gridforge.opt import Data
+
+data = Data(
+    grid_xlsx_path="14bus_config.xlsx",
+    data_dir="14bus_data",
+    sheet_names=["load", "solar", "wind"],
+)
+```
+
+For each requested sheet, `Data(...)`:
+
+1. reads that sheet's `BUS_IDX` values from the Excel workbook,
+2. opens the corresponding `bus_<BUS_IDX>.csv` files,
+3. extracts the column whose name matches the sheet name case-insensitively,
+4. stacks those columns in the same row order as the Excel sheet.
+
+Sheet-backed profile examples:
+
+```python
+data.get_series("load")   # shape: (T, n_load_rows)
+data.get_series("solar")  # shape: (T, n_solar_rows)
+data.get_bus_idx("load")  # generated BUS_IDX values for load rows
+data.get_n("wind")        # number of wind rows
+```
+
+For full per-bus files and contextual columns:
+
+```python
+data.bus_ids()                         # loaded bus CSV IDs
+data.get_bus_frame(2)                  # full bus_2.csv DataFrame
+data.get_column("Temperature (k)")     # shape: (T, n_loaded_buses)
+data.get_column("Weekday_sin", bus_idx=[2, 3])
+```
+
+`get_column(...)` is for numeric columns. Use `get_bus_frame(...)` when you need
+the original DataFrame, including non-numeric context columns.
+
 ## Helper methods on wrappers
 
 Both `grid.core.*` wrappers and `grid.custom[...]` wrappers support field
@@ -265,7 +310,7 @@ Example:
 
 ```python
 grid.core.branch.field("RATE_A")
-grid.core.gencost.field_names()
+grid.core.gen.field_names()
 ```
 
 ### Custom wrappers
@@ -278,12 +323,18 @@ Supported methods:
 - `.active_mask()`: boolean mask based on `STATUS > 0` when available
 - `.active_rows()`: row indices corresponding to the active mask
 
+If a sheet has a `STATUS` column, `active_mask()` returns `True` for rows where
+`STATUS > 0`. If the sheet has no `STATUS` column, all rows are treated as
+active.
+
 Example:
 
 ```python
 solar = grid.custom["solar"]
 solar.field("PMAX")
-solar.active_mask()
+active_mask = solar.active_mask()
+active_rows = solar.active_rows()
+active_pmax = solar.pmax[active_mask]
 ```
 
 ## Important conventions
@@ -295,6 +346,7 @@ Raw Excel columns are exposed as lowercase attribute names on wrappers.
 Examples:
 
 - `PMAX` -> `.pmax`
+- `COST_FIRST` -> `.cost_first`
 - `SHED_COST` -> `.shed_cost`
 - `F_BUS_IDX` -> `.f_bus_idx`
 
@@ -310,19 +362,20 @@ Examples:
 - `grid.core.bus.bus_idx`
 - `grid.core.gen.bus_idx`
 - `grid.custom["load"].bus_idx`
+- `grid.load.bus_idx`
 
 ### 3. `Cbus` maps sheet rows to buses
 
-For BUS-backed sheets, `Cbus` has shape `(nbus, n_component_rows)` and places a
-1 at the bus corresponding to each row.
+For sheets attached to buses, `Cbus` has shape `(nbus, n_component_rows)` and
+places a 1 at the bus corresponding to each row.
 
 This is useful when mapping component-level variables to bus injections:
 
 ```python
 inj = (
-    grid.core.gen.Cbus @ pg
-    + grid.custom["solar"].Cbus @ ps
-    - grid.custom["load"].Cbus @ pl
+    grid.gen.Cbus @ pg
+    + grid.solar.Cbus @ ps
+    - grid.load.Cbus @ pl
 )
 ```
 
@@ -332,15 +385,16 @@ Use:
 
 - `grid.sheets[...]` for raw inspection
 - `grid.core.*` for network-defined sheets
-- `grid.custom[...]` for user-defined BUS-backed assets
+- `grid.custom[...]` for user-defined assets attached to buses
+- `grid.<sheet>` aliases for concise notebook/model code
 
 Example:
 
 ```python
-gen = grid.core.gen
-branch = grid.core.branch
-load = grid.custom["load"]
-solar = grid.custom["solar"]
+gen = grid.gen
+branch = grid.branch
+load = grid.load
+solar = grid.solar
 
 print(gen.pmax)
 print(branch.ptdf.shape)
@@ -350,15 +404,20 @@ print(solar.field_names())
 
 ## Caveats
 
-- Only non-core sheets with `BUS_IDX` become entries in `grid.custom[...]`.
-- Non-BUS custom tables remain available in `grid.sheets[...]`, but do not get
-  a generic custom wrapper.
-- `grid.core.gencost` is aligned with generators, not with buses.
+- Every custom sheet is attached to buses through `BUS_IDX` and appears in
+  `grid.custom[...]`.
+- Top-level aliases are conveniences, not a replacement for `grid.core` and
+  `grid.custom`.
+- PYPOWER/MATPOWER `gencost` rows are merged into `gen` as `COST_*` columns
+  before the workbook is written.
+- Time-series data is loaded only for sheets requested in `Data(...,
+  sheet_names=[...])`; static custom sheets do not need CSV data.
 
-## In one sentence
+## Summary
 
 After `Grid(...)` is instantiated, use:
 
 - `grid.sheets[...]` for raw tables,
 - `grid.core.*` for built-in network objects,
-- `grid.custom[...]` for BUS-backed custom assets.
+- `grid.custom[...]` for custom assets attached to buses,
+- `Data(...)` for aligned time-series matrices.
