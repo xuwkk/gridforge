@@ -1,7 +1,7 @@
 # GridForge Documentation
 
 <p align="center">
-  <img src="../image/gridforge.png" alt="GridForge Logo" width="220">
+  <img src="image/gridforge.png" alt="GridForge Logo" width="220">
 </p>
 
 GridForge is a power-system configuration and formulation toolkit for research

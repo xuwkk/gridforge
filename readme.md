@@ -13,7 +13,8 @@ GridForge is useful when a standard test case is not enough: for example, when
 you need custom assets such as load, solar, wind, or storage, time-series data
 attached to selected buses, and convenient access to the final case in CVXPY.
 
-Go to [documentation](docs/index.md) page for more details.
+Read the full documentation at
+[xuwkk.github.io/gridforge](https://xuwkk.github.io/gridforge/).
 
 ## Workflow
 
@@ -164,14 +165,19 @@ streamlit run gridforge/config_app.py
 
 ## Documentation
 
-- [Workflow](docs/workflow.md): complete YAML -> Excel -> bus data -> Python
+The published documentation is available at
+[xuwkk.github.io/gridforge](https://xuwkk.github.io/gridforge/).
+
+- [Workflow](https://xuwkk.github.io/gridforge/workflow/): complete YAML -> Excel -> bus data -> Python
   pipeline.
-- [Visual config app](docs/visual-app.md): Streamlit builder for grid YAML.
-- [Configuration reference](docs/configuration.md): GridForge YAML schema.
-- [Bus-data assignment](docs/bus-data-assignment.md): assign source CSV
+- [Visual config app](https://xuwkk.github.io/gridforge/visual-app/): Streamlit builder for grid YAML.
+- [Configuration reference](https://xuwkk.github.io/gridforge/configuration/): GridForge YAML schema.
+- [Bus-data assignment](https://xuwkk.github.io/gridforge/bus-data-assignment/): assign source CSV
   profiles to generated buses.
-- [Grid and Data access](docs/grid-data-access.md): entries exposed by
+- [Grid and Data access](https://xuwkk.github.io/gridforge/grid-data-access/): entries exposed by
   `Grid(...)` and `Data(...)`.
-- [TX-123BT workflow](docs/tx123bt.md): optional public source-data
+- [TX-123BT workflow](https://xuwkk.github.io/gridforge/tx123bt/): optional public source-data
   preparation.
-- [Examples](docs/examples.md): runnable examples included in this repository.
+- [Examples](https://xuwkk.github.io/gridforge/examples/): runnable examples included in this repository.
+
+The source Markdown files for the site live in [`docs/`](docs/).
