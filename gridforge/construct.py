@@ -5,12 +5,12 @@ This module is used to generate the grid configuration.
 from typing import Dict, List, Optional, Tuple, Any
 import importlib.util
 from pathlib import Path
-import numpy as np
+
+from gridforge.numpy_compat import patch_numpy_for_pypower
+
+np = patch_numpy_for_pypower()
+
 import pandas as pd
-
-if not hasattr(np, "asscalar"):
-    np.asscalar = lambda a: a.item()
-
 import pypower.api as pp
 import yaml
 
@@ -76,13 +76,13 @@ def _validate_gridforge_yaml(cfg: Dict[str, Any]) -> None:
         for column_name, column_cfg in sheet_cfg.items():
             _validate_column_rule(sheet_name, column_name, column_cfg)
 
-    rescale_cfg = cfg.get("rescale", [])
+    rescale_cfg = cfg.get("rescale", {})
     if rescale_cfg is None:
         return
-    if not isinstance(rescale_cfg, list):
-        raise ValueError("`rescale` must be a list of rescale rules.")
-    for rule_idx, rule_cfg in enumerate(rescale_cfg):
-        _validate_rescale_rule_shape(rule_cfg, rule_idx)
+    if not isinstance(rescale_cfg, dict):
+        raise ValueError("`rescale` must be a dictionary of named rescale rules.")
+    for rule_name, rule_cfg in rescale_cfg.items():
+        _validate_rescale_rule_shape(rule_name, rule_cfg)
 
 
 def _validate_column_rule(sheet_name: str, column_name: str, column_cfg: Any) -> None:
@@ -142,20 +142,20 @@ def _validate_random_ratio(config: Dict[str, Any], context: str) -> None:
         raise ValueError(f"The random ratio for {context} must be between 0 and 1.")
 
 
-def _validate_rescale_rule_shape(rule_cfg: Any, rule_idx: int) -> None:
+def _validate_rescale_rule_shape(rule_name: Any, rule_cfg: Any) -> None:
+    rule_ctx = f"rescale.{rule_name}"
     if not isinstance(rule_cfg, dict):
-        raise ValueError(f"rescale[{rule_idx}] must be a dictionary.")
-    rule_name = rule_cfg.get("name", f"rule_{rule_idx}")
+        raise ValueError(f"`{rule_ctx}` must be a dictionary.")
     if not isinstance(rule_cfg.get("target"), dict):
-        raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires a `target` dictionary.")
+        raise ValueError(f"`{rule_ctx}` requires a `target` dictionary.")
     if "ratio" not in rule_cfg:
-        raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires `ratio`.")
+        raise ValueError(f"`{rule_ctx}` requires `ratio`.")
     sources_cfg = rule_cfg.get("sources")
-    if not isinstance(sources_cfg, list) or len(sources_cfg) == 0:
-        raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires a non-empty `sources` list.")
-    _validate_rescale_term_shape(rule_cfg["target"], f"rescale[{rule_idx}] '{rule_name}' target")
-    for src_idx, src_cfg in enumerate(sources_cfg):
-        _validate_rescale_term_shape(src_cfg, f"rescale[{rule_idx}] '{rule_name}' source[{src_idx}]")
+    if not isinstance(sources_cfg, dict) or len(sources_cfg) == 0:
+        raise ValueError(f"`{rule_ctx}.sources` must be a non-empty dictionary.")
+    _validate_rescale_term_shape(rule_cfg["target"], f"{rule_ctx}.target")
+    for source_name, src_cfg in sources_cfg.items():
+        _validate_rescale_term_shape(src_cfg, f"{rule_ctx}.sources.{source_name}")
 
 
 def _validate_rescale_term_shape(term_cfg: Any, context: str) -> None:
@@ -346,7 +346,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
 
     grid_cfg = cfg['grid_config']
     super_cfg = cfg['super_config']
-    rescale_cfg = cfg.get('rescale', [])
+    rescale_cfg = cfg.get('rescale', {})
     np.random.seed(random_seed)
     
     config_base_dir = Path(config_path).expanduser().resolve().parent
@@ -666,6 +666,8 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         pd_series = sheet_dict["bus"]["PD"].astype(float)
         mask = np.zeros(len(sheet_dict["bus"]), dtype=bool)
 
+        bus_type_aliases = {"pq": 1, "pv": 2, "slack": 3, "ref": 3}
+
         for token in bus_type_list:
             if isinstance(token, (int, np.integer)):
                 if int(token) == 4:
@@ -674,19 +676,21 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
                 if int(token) not in [1, 2, 3]:
                     raise ValueError(
                         f"Unsupported {ctx} value '{token}' for key '{component_name}'. "
-                        "Use 1, 2, 3, 4, or positive_pd."
+                        "Use 1/pq, 2/pv, 3/slack, 4, or positive_pd."
                     )
                 mask = mask | (bus_type_series.values == int(token))
             elif isinstance(token, str):
                 t = token.strip().lower()
-                if t in ["1", "2", "3"]:
+                if t in bus_type_aliases:
+                    mask = mask | (bus_type_series.values == bus_type_aliases[t])
+                elif t in ["1", "2", "3"]:
                     mask = mask | (bus_type_series.values == int(t))
                 elif t in ["4", "positive_pd", "pd_positive"]:
                     mask = mask | (pd_series.values > 0)
                 else:
                     raise ValueError(
                         f"Unsupported {ctx} value '{token}' for key '{component_name}'. "
-                        "Use 1, 2, 3, 4, or positive_pd."
+                        "Use 1/pq, 2/pv, 3/slack, 4, or positive_pd."
                     )
             else:
                 raise ValueError(
@@ -925,8 +929,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         return _aggregate_numeric_values(ref_values, str(aggregate_mode), f"{ctx} ({ref_sheet}.{ref_col})")
 
     def _validate_rescale_target(
-        rule_name: str,
-        rule_idx: int,
+        rule_ctx: str,
         target_cfg: Dict[str, Any],
     ) -> Tuple[str, str, str, Optional[Dict[str, Any]]]:
         target_sheet = target_cfg.get("sheet", None)
@@ -935,39 +938,38 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         target_filter = target_cfg.get("filter", None)
         if "strict" in target_cfg:
             raise ValueError(
-                f"rescale[{rule_idx}] '{rule_name}' target.strict is no longer supported; "
+                f"{rule_ctx}.target.strict is no longer supported; "
                 "rescale terms are always strict."
             )
         if target_sheet not in sheet_dict:
-            raise ValueError(f"rescale[{rule_idx}] '{rule_name}' target sheet '{target_sheet}' does not exist.")
+            raise ValueError(f"{rule_ctx}.target.sheet '{target_sheet}' does not exist.")
         if target_col not in sheet_dict[target_sheet].columns:
             raise ValueError(
-                f"rescale[{rule_idx}] '{rule_name}' target column '{target_col}' does not exist in '{target_sheet}'."
+                f"{rule_ctx}.target.column '{target_col}' does not exist in '{target_sheet}'."
             )
         return target_sheet, target_col, str(target_aggregate), target_filter
 
     def _resolve_rescale_source_total(
-        rule_name: str,
-        rule_idx: int,
+        rule_ctx: str,
         rule_cfg: Dict[str, Any],
     ) -> float:
         if "ratio" not in rule_cfg:
-            raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires `ratio`.")
+            raise ValueError(f"{rule_ctx} requires `ratio`.")
         ratio = float(rule_cfg["ratio"])
         sources_cfg = rule_cfg.get("sources", None)
-        if not isinstance(sources_cfg, list) or len(sources_cfg) == 0:
-            raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires a non-empty `sources` list.")
+        if not isinstance(sources_cfg, dict) or len(sources_cfg) == 0:
+            raise ValueError(f"{rule_ctx}.sources must be a non-empty dictionary.")
 
         source_total = 0.0
-        for src_idx, src_cfg in enumerate(sources_cfg):
+        for source_name, src_cfg in sources_cfg.items():
             source_total += _resolve_rescale_term_value(
-                src_cfg, f"rescale[{rule_idx}] '{rule_name}' source[{src_idx}]"
+                src_cfg, f"{rule_ctx}.sources.{source_name}"
             )
         return ratio * source_total
 
     def _scale_rescale_target(
         rule_name: str,
-        rule_idx: int,
+        rule_ctx: str,
         target_sheet: str,
         target_col: str,
         target_aggregate: str,
@@ -975,21 +977,21 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         target_value: float,
     ) -> None:
         target_mask = _build_rescale_filter_mask(
-            target_sheet, target_filter, f"rescale[{rule_idx}] '{rule_name}' target"
+            target_sheet, target_filter, f"{rule_ctx}.target"
         )
         if np.sum(target_mask) == 0:
-            raise ValueError(f"rescale[{rule_idx}] '{rule_name}' target.filter selected zero rows.")
+            raise ValueError(f"{rule_ctx}.target.filter selected zero rows.")
 
         target_values = sheet_dict[target_sheet].loc[target_mask, target_col]
         current_target_aggregate = _aggregate_numeric_values(
             target_values,
             str(target_aggregate),
-            f"rescale[{rule_idx}] '{rule_name}' target ({target_sheet}.{target_col})",
+            f"{rule_ctx}.target ({target_sheet}.{target_col})",
         )
         target_numeric = pd.to_numeric(sheet_dict[target_sheet][target_col], errors="coerce")
         if target_numeric.loc[target_mask].isna().any():
             raise ValueError(
-                f"rescale[{rule_idx}] '{rule_name}' target column '{target_sheet}.{target_col}' "
+                f"{rule_ctx}.target column '{target_sheet}.{target_col}' "
                 "contains non-numeric values in selected rows."
             )
 
@@ -998,7 +1000,7 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
                 scale_factor = 1.0
             else:
                 raise ValueError(
-                    f"rescale[{rule_idx}] '{rule_name}' cannot scale target aggregate from 0 to {target_value}."
+                    f"{rule_ctx} cannot scale target aggregate from 0 to {target_value}."
                 )
         else:
             scale_factor = target_value / current_target_aggregate
@@ -1009,20 +1011,21 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
             f"(target={target_value:.6f}, current={current_target_aggregate:.6f})."
         )
 
-    def _apply_rescale_rule(rule_cfg: Dict[str, Any], rule_idx: int) -> None:
+    def _apply_rescale_rule(rule_name: Any, rule_cfg: Dict[str, Any]) -> None:
+        rule_name = str(rule_name)
+        rule_ctx = f"rescale.{rule_name}"
         if not isinstance(rule_cfg, dict):
-            raise ValueError(f"rescale[{rule_idx}] must be a dictionary.")
-        rule_name = rule_cfg.get("name", f"rule_{rule_idx}")
+            raise ValueError(f"{rule_ctx} must be a dictionary.")
         target_cfg = rule_cfg.get("target", None)
         if not isinstance(target_cfg, dict):
-            raise ValueError(f"rescale[{rule_idx}] '{rule_name}' requires a `target` dictionary.")
+            raise ValueError(f"{rule_ctx} requires a `target` dictionary.")
         target_sheet, target_col, target_aggregate, target_filter = _validate_rescale_target(
-            rule_name, rule_idx, target_cfg
+            rule_ctx, target_cfg
         )
-        target_value = _resolve_rescale_source_total(rule_name, rule_idx, rule_cfg)
+        target_value = _resolve_rescale_source_total(rule_ctx, rule_cfg)
         _scale_rescale_target(
             rule_name,
-            rule_idx,
+            rule_ctx,
             target_sheet,
             target_col,
             target_aggregate,
@@ -1047,11 +1050,11 @@ def construct_grid_config(config_path: str, output_path: str, random_seed: int) 
         _build_custom_sheet(component_name=sheet_name, component_cfg=grid_cfg[sheet_name])
 
     if rescale_cfg is None:
-        rescale_cfg = []
-    if not isinstance(rescale_cfg, list):
-        raise ValueError("`rescale` must be a list of rescale rules.")
-    for rule_idx, rule_cfg in enumerate(rescale_cfg):
-        _apply_rescale_rule(rule_cfg, rule_idx)
+        rescale_cfg = {}
+    if not isinstance(rescale_cfg, dict):
+        raise ValueError("`rescale` must be a dictionary of named rescale rules.")
+    for rule_name, rule_cfg in rescale_cfg.items():
+        _apply_rescale_rule(rule_name, rule_cfg)
 
     _save_sheet_dict_to_excel(
         sheet_dict,

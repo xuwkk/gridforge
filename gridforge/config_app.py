@@ -17,16 +17,16 @@ import tempfile
 from pathlib import Path
 import yaml
 import streamlit as st
-import numpy as np
 import pandas as pd
-
-if not hasattr(np, "asscalar"):
-    np.asscalar = lambda a: a.item()
 
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(PACKAGE_DIR)
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
+
+from gridforge.numpy_compat import patch_numpy_for_pypower
+
+np = patch_numpy_for_pypower()
 
 from gridforge.construct import (
     METADATA_SHEET_NAME,
@@ -41,9 +41,12 @@ ALLOWED_FORMATS = ["absolute", "relative"]
 ALLOWED_MAP_BY = ["row", "bus_idx"]
 ALLOWED_AGGREGATES = ["max", "min", "mean", "sum"]
 RELATIVE_MODE_OPTIONS = ALLOWED_MAP_BY + ALLOWED_AGGREGATES
-BUS_TYPE_OPTIONS = ["1", "2", "3", "4", "positive_pd"]
+BUS_TYPE_OPTIONS = ["pq", "pv", "slack", "4", "positive_pd"]
 SPECIAL_COLUMNS = {"BUS_IDX", "STATUS"}
 BUS_TYPE_LABELS = {
+    "pq": "PQ buses (1)",
+    "pv": "PV buses (2)",
+    "slack": "Slack buses (3)",
     "1": "PQ buses (1)",
     "2": "PV buses (2)",
     "3": "Slack buses (3)",
@@ -119,10 +122,10 @@ def _normalize_loaded_cfg_columns(raw_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     raw_cfg["grid_config"] = normalized_grid_cfg
 
-    rescale_cfg = raw_cfg.get("rescale", [])
-    if isinstance(rescale_cfg, list):
-        normalized_rescale = []
-        for rule_cfg in rescale_cfg:
+    rescale_cfg = raw_cfg.get("rescale", {})
+    if isinstance(rescale_cfg, dict):
+        normalized_rescale = {}
+        for rule_name, rule_cfg in rescale_cfg.items():
             next_rule = copy.deepcopy(rule_cfg)
             if isinstance(next_rule, dict):
                 target_cfg = next_rule.get("target")
@@ -132,18 +135,18 @@ def _normalize_loaded_cfg_columns(raw_cfg: Dict[str, Any]) -> Dict[str, Any]:
                     if "filter" in target_cfg:
                         target_cfg["filter"] = _normalize_filter_mapping_keys(target_cfg["filter"])
                 sources_cfg = next_rule.get("sources")
-                if isinstance(sources_cfg, list):
-                    normalized_sources = []
-                    for src_cfg in sources_cfg:
+                if isinstance(sources_cfg, dict):
+                    normalized_sources = {}
+                    for source_name, src_cfg in sources_cfg.items():
                         next_src = copy.deepcopy(src_cfg)
                         if isinstance(next_src, dict):
                             if "column" in next_src:
                                 next_src["column"] = _normalize_field_name(next_src["column"])
                             if "filter" in next_src:
                                 next_src["filter"] = _normalize_filter_mapping_keys(next_src["filter"])
-                        normalized_sources.append(next_src)
+                        normalized_sources[source_name] = next_src
                     next_rule["sources"] = normalized_sources
-            normalized_rescale.append(next_rule)
+            normalized_rescale[rule_name] = next_rule
         raw_cfg["rescale"] = normalized_rescale
 
     return raw_cfg
@@ -156,7 +159,7 @@ def _default_state() -> Dict[str, Any]:
             "baseMVA": 100,
         },
         "grid_config": {k: {} for k in CORE_SHEETS},
-        "rescale": [],
+        "rescale": {},
     }
 
 
@@ -214,6 +217,12 @@ def _is_custom_sheet(cfg: Dict[str, Any], sheet_name: str) -> bool:
 def _format_bus_type_token(token: Any) -> str:
     key = str(token).strip()
     return BUS_TYPE_LABELS.get(key, key)
+
+
+def _normalize_bus_type_token(token: Any) -> str:
+    key = str(token).strip().lower()
+    aliases = {"1": "pq", "2": "pv", "3": "slack", "ref": "slack"}
+    return aliases.get(key, key)
 
 
 def _format_bus_idx_summary(sheet_name: str, bus_idx_cfg: Dict[str, Any]) -> str:
@@ -282,15 +291,16 @@ def _get_candidate_bus_ids(bus_type_tokens: List[Any]) -> List[int]:
     bus_idx_series = pd.to_numeric(bus_df["BUS_IDX"], errors="coerce")
     mask = pd.Series(False, index=bus_df.index)
     for token in bus_type_tokens:
-        token_str = str(token).strip().lower()
+        token_str = _normalize_bus_type_token(token)
         if token_str in {"4", "positive_pd", "pd_positive"}:
             if "PD" in bus_df.columns:
                 pd_series = pd.to_numeric(bus_df["PD"], errors="coerce").fillna(0.0)
                 mask = mask | (pd_series > 0)
-        elif token_str in {"1", "2", "3"}:
+        elif token_str in {"pq", "pv", "slack"}:
             if "BUS_TYPE" in bus_df.columns:
+                bus_type_by_alias = {"pq": 1, "pv": 2, "slack": 3}
                 bus_type_series = pd.to_numeric(bus_df["BUS_TYPE"], errors="coerce")
-                mask = mask | (bus_type_series == int(token_str))
+                mask = mask | (bus_type_series == bus_type_by_alias[token_str])
     candidate_vals = bus_idx_series[mask].dropna().astype(int).tolist()
     return sorted(set(candidate_vals))
 
@@ -313,9 +323,9 @@ def _validate_loaded_cfg(raw_cfg: Any) -> Dict[str, Any]:
     if "grid_config" not in raw_cfg or not isinstance(raw_cfg["grid_config"], dict):
         raise ValueError("YAML must contain `grid_config` as a dictionary.")
     if "rescale" not in raw_cfg:
-        raw_cfg["rescale"] = []
-    if not isinstance(raw_cfg["rescale"], list):
-        raise ValueError("`rescale` must be a list.")
+        raw_cfg["rescale"] = {}
+    if not isinstance(raw_cfg["rescale"], dict):
+        raise ValueError("`rescale` must be a dictionary of named rules.")
     return _normalize_loaded_cfg_columns(raw_cfg)
 
 
@@ -357,6 +367,7 @@ def _reset_builder_widget_state() -> None:
         "rescale_ratio::",
         "rescale_add_source::",
         "rescale_remove_source::",
+        "rescale_src_name::",
         "rescale_src_sheet::",
         "rescale_src_col::",
         "rescale_src_agg::",
@@ -644,7 +655,7 @@ def _render_config_overview(cfg: Dict[str, Any]) -> None:
         len([col for col in grid_cfg.get(name, {}) if col not in SPECIAL_COLUMNS])
         for name in CORE_SHEETS
     )
-    rescale_count = len(cfg.get("rescale", [])) if isinstance(cfg.get("rescale", []), list) else 0
+    rescale_count = len(cfg.get("rescale", {})) if isinstance(cfg.get("rescale", {}), dict) else 0
     metric_cols = st.columns(4)
     metric_cols[0].metric("Core sheets", len([name for name in CORE_SHEETS if name in grid_cfg]))
     metric_cols[1].metric("Core edits", edited_core)
@@ -735,17 +746,17 @@ def _render_field_editor_header() -> None:
         col.caption(label)
 
 
-def _format_rescale_formula(rule_cfg: Dict[str, Any], idx: int) -> str:
-    name = str(rule_cfg.get("name", f"rule_{idx}"))
+def _format_rescale_formula(rule_name: str, rule_cfg: Dict[str, Any]) -> str:
+    name = str(rule_name)
     target = rule_cfg.get("target", {})
     tgt_sheet = target.get("sheet", "?")
     tgt_col = target.get("column", "?")
     tgt_agg = target.get("aggregate", "sum")
     ratio = rule_cfg.get("ratio", "?")
-    sources = rule_cfg.get("sources", [])
+    sources = rule_cfg.get("sources", {})
     source_terms = []
-    if isinstance(sources, list):
-        for src in sources:
+    if isinstance(sources, dict):
+        for src in sources.values():
             if isinstance(src, dict):
                 source_terms.append(
                     f"{src.get('aggregate', 'sum')}({src.get('sheet', '?')}.{src.get('column', '?')})"
@@ -776,9 +787,9 @@ def _parse_mapping_yaml(raw: str, field_name: str) -> Dict[str, Any]:
 
 
 def _render_rescale_editor(cfg: Dict[str, Any]) -> None:
-    cfg.setdefault("rescale", [])
-    if not isinstance(cfg["rescale"], list):
-        cfg["rescale"] = []
+    cfg.setdefault("rescale", {})
+    if not isinstance(cfg["rescale"], dict):
+        cfg["rescale"] = {}
 
     st.subheader("Rescale Rules")
     if _show_extra_guidance():
@@ -794,38 +805,45 @@ def _render_rescale_editor(cfg: Dict[str, Any]) -> None:
     add_cols = st.columns([2, 1])
     add_cols[0].caption(f"Current rules: {len(cfg['rescale'])}")
     if add_cols[1].button("Add Rescale Rule"):
-        cfg["rescale"].append(
-            {
-                "name": f"rule_{len(cfg['rescale'])}",
-                "target": {"sheet": "load", "column": "PMAX", "aggregate": "sum"},
-                "ratio": 1.0,
-                "sources": [{"sheet": "gen", "column": "PMAX", "aggregate": "sum"}],
-            }
-        )
+        rule_name = f"rule_{len(cfg['rescale'])}"
+        while rule_name in cfg["rescale"]:
+            rule_name = f"rule_{len(cfg['rescale']) + 1}"
+        cfg["rescale"][rule_name] = {
+            "target": {"sheet": "load", "column": "PMAX", "aggregate": "sum"},
+            "ratio": 1.0,
+            "sources": {"source_0": {"sheet": "gen", "column": "PMAX", "aggregate": "sum"}},
+        }
         st.rerun()
 
-    for i, rule_cfg in enumerate(list(cfg["rescale"])):
+    for i, (rule_name, rule_cfg) in enumerate(list(cfg["rescale"].items())):
         if not isinstance(rule_cfg, dict):
-            cfg["rescale"][i] = {}
-            rule_cfg = cfg["rescale"][i]
+            cfg["rescale"][rule_name] = {}
+            rule_cfg = cfg["rescale"][rule_name]
 
         target_cfg = rule_cfg.setdefault("target", {})
         target_cfg.pop("strict", None)
-        sources = rule_cfg.setdefault("sources", [])
-        if not isinstance(sources, list):
-            sources = []
+        sources = rule_cfg.setdefault("sources", {})
+        if not isinstance(sources, dict):
+            sources = {}
             rule_cfg["sources"] = sources
 
-        with st.expander(f"Rule {i + 1}: {rule_cfg.get('name', f'rule_{i}')}", expanded=False):
+        with st.expander(f"Rule {i + 1}: {rule_name}", expanded=False):
             top_cols = st.columns([3, 1])
-            rule_cfg["name"] = top_cols[0].text_input(
-                "name (optional)",
-                value=str(rule_cfg.get("name", f"rule_{i}")),
+            new_rule_name = top_cols[0].text_input(
+                "Rule name",
+                value=str(rule_name),
                 key=f"rescale_name::{i}",
-                help="Optional label used only for readability in the app and YAML.",
+                help="Dictionary key used for this rule in the YAML.",
             )
+            new_rule_name = str(new_rule_name).strip()
+            if new_rule_name and new_rule_name != rule_name:
+                if new_rule_name in cfg["rescale"]:
+                    st.error(f"Rescale rule '{new_rule_name}' already exists.")
+                else:
+                    cfg["rescale"][new_rule_name] = cfg["rescale"].pop(rule_name)
+                    st.rerun()
             if top_cols[1].button("Remove Rule", key=f"rescale_remove::{i}"):
-                del cfg["rescale"][i]
+                del cfg["rescale"][rule_name]
                 st.rerun()
 
             st.markdown("**Target**")
@@ -897,24 +915,37 @@ def _render_rescale_editor(cfg: Dict[str, Any]) -> None:
             src_head_cols = st.columns([3, 1])
             src_head_cols[0].markdown("**Sources**")
             if src_head_cols[1].button("Add Source", key=f"rescale_add_source::{i}"):
-                sources.append(
-                    {
-                        "sheet": "gen",
-                        "column": "PMAX",
-                        "aggregate": "sum",
-                    }
-                )
+                source_name = f"source_{len(sources)}"
+                while source_name in sources:
+                    source_name = f"source_{len(sources) + 1}"
+                sources[source_name] = {
+                    "sheet": "gen",
+                    "column": "PMAX",
+                    "aggregate": "sum",
+                }
                 st.rerun()
 
-            for j, src_cfg in enumerate(list(sources)):
+            for j, (source_name, src_cfg) in enumerate(list(sources.items())):
                 if not isinstance(src_cfg, dict):
-                    sources[j] = {}
-                    src_cfg = sources[j]
+                    sources[source_name] = {}
+                    src_cfg = sources[source_name]
                 src_cfg.pop("strict", None)
-                s_cols = st.columns([3, 1])
-                s_cols[0].caption(f"Source {j + 1}")
+                s_cols = st.columns([2, 1])
+                new_source_name = s_cols[0].text_input(
+                    f"Source {j + 1} name",
+                    value=str(source_name),
+                    key=f"rescale_src_name::{i}::{j}",
+                    help="Dictionary key used for this source in the YAML.",
+                )
+                new_source_name = str(new_source_name).strip()
+                if new_source_name and new_source_name != source_name:
+                    if new_source_name in sources:
+                        st.error(f"Source '{new_source_name}' already exists in this rule.")
+                    else:
+                        sources[new_source_name] = sources.pop(source_name)
+                        st.rerun()
                 if s_cols[1].button("Remove", key=f"rescale_remove_source::{i}::{j}"):
-                    del sources[j]
+                    del sources[source_name]
                     st.rerun()
                 s_sheet_options = list(cfg.get("grid_config", {}).keys())
                 if len(s_sheet_options) == 0:
@@ -969,7 +1000,7 @@ def _render_rescale_editor(cfg: Dict[str, Any]) -> None:
                     st.error(f"source[{j}].filter parse error: {e}")
 
             if _show_formula_captions():
-                st.caption(_format_rescale_formula(rule_cfg, i))
+                st.caption(_format_rescale_formula(rule_name, rule_cfg))
 
 
 def _render_column_editor(cfg: Dict[str, Any], sheet_name: str, col_name: str) -> None:
@@ -1240,7 +1271,7 @@ def _render_bus_idx_editor(cfg: Dict[str, Any], sheet_name: str, mode: str) -> N
             selected_bus_types = placement_cols[1].multiselect(
                 "Candidate bus pool",
                 bus_type_options,
-                default=[str(v) for v in rel_cfg.get("bus_type", ["4"])],
+                default=[_normalize_bus_type_token(v) for v in rel_cfg.get("bus_type", ["4"])],
                 key=f"bus_idx_bus_type::{sheet_name}",
                 format_func=_format_bus_type_token,
                 help="Choose which buses are eligible for sampling.",

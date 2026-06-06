@@ -396,9 +396,9 @@ class Grid:
             self.core.branch['Ct'][i, idx-1] = 1
         self.core.branch['A'] = self.core.branch['Cf'] - self.core.branch['Ct']
         
-        tap = self.sheets["branch"]["TAP"].values
+        tap = self.sheets["branch"]["TAP"].to_numpy(dtype=float, copy=True)
         tap[np.where(tap == 0)] = 1
-        Bff = 1/(self.sheets["branch"]["BR_X"].values * tap)
+        Bff = 1/(self.sheets["branch"]["BR_X"].to_numpy(dtype=float) * tap)
         self.core.branch['Bf'] = np.diag(Bff) @ self.core.branch['A'] # branch susceptance matrix
         self.core.branch['Bbus'] = self.core.branch['A'].T @ self.core.branch['Bf']  # bus susceptance matrix
         self.core.branch['Pfshift'] = -self.sheets["branch"]["SHIFT"].values / 180 * np.pi * Bff  # shifter due to the transformer
