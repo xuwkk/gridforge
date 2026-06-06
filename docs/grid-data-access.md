@@ -281,6 +281,34 @@ data.get_bus_idx("load")  # generated BUS_IDX values for load rows
 data.get_n("wind")        # number of wind rows
 ```
 
+### `get_series(...)` vs `get_column(...)`
+
+Use `get_column(...)` when you want a column from the materialized bus CSV
+files. This is the general bus-level access method and works for both signal
+columns and context columns:
+
+```python
+data.get_column("load")             # load column from each loaded bus CSV
+data.get_column("Temperature (k)")  # weather/context column
+data.get_column("Hour_sin")         # calendar/context column
+data.get_column("load", bus_idx=[2, 3, 14])
+```
+
+The columns of `get_column(...)` follow the selected generated `BUS_IDX` values
+(or all loaded bus IDs if `bus_idx` is omitted).
+
+Use `get_series(...)` when you need a time-series matrix aligned to a workbook
+asset sheet. For example, `data.get_series("load")[:, i]` matches row `i` of
+`grid.load`, so it is the safer form when multiplying by `grid.load.Cbus` in an
+optimization model.
+
+In short:
+
+```python
+data.get_column("load")   # bus-ordered CSV data
+data.get_series("load")   # load-sheet-row-ordered optimization data
+```
+
 For full per-bus files and contextual columns:
 
 ```python

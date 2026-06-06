@@ -71,23 +71,17 @@ from the Excel workbook to know which generated buses require data.
 ```python
 from gridforge.data import (
     load_bus_data_assignment,
-    materialize_bus_data_assignment,
-    suggest_bus_data_assignment,
+    prepare_bus_data,
 )
 
 assignment_template = load_bus_data_assignment("examples/14bus_uc/14bus_data_assignment.yaml")
-assignment = suggest_bus_data_assignment(
+assignment, materialized = prepare_bus_data(
     grid_xlsx_path="examples/14bus_uc/14bus_config.xlsx",
     source_data_dir="data/bus_data",
     signals=assignment_template["signals"],
     output_data_dir="examples/14bus_uc/14bus_data",
+    resolved_assignment_path="examples/14bus_uc/14bus_data_assignment_resolved.yaml",
     random_seed=404,
-)
-
-materialize_bus_data_assignment(
-    grid_xlsx_path="examples/14bus_uc/14bus_config.xlsx",  # input Excel workbook from Stage 1
-    assignment=assignment,  # generated bus-to-source mapping
-    output_data_dir="examples/14bus_uc/14bus_data",  # output directory for case-specific bus_<BUS_IDX>.csv files
 )
 ```
 

@@ -100,32 +100,27 @@ The same workflow can be called from Python:
 from gridforge.construct import construct_grid_config
 from gridforge.data import (
     load_bus_data_assignment,
-    materialize_bus_data_assignment,
-    suggest_bus_data_assignment,
+    prepare_bus_data,
 )
 from gridforge.opt import Grid, Data
 
 config_yaml = "examples/14bus_uc/14bus_config.yaml"
 config_xlsx = "examples/14bus_uc/14bus_config.xlsx"
 assignment_yaml = "examples/14bus_uc/14bus_data_assignment.yaml"
+resolved_assignment_yaml = "examples/14bus_uc/14bus_data_assignment_resolved.yaml"
 data_dir = "examples/14bus_uc/14bus_data"
 source_data_dir = "data/bus_data"
 
 construct_grid_config(config_yaml, config_xlsx, random_seed=404)
 
 assignment_template = load_bus_data_assignment(assignment_yaml)
-assignment = suggest_bus_data_assignment(
+assignment, _ = prepare_bus_data(
     grid_xlsx_path=config_xlsx,
     source_data_dir=source_data_dir,
     signals=assignment_template["signals"],
     output_data_dir=data_dir,
+    resolved_assignment_path=resolved_assignment_yaml,
     random_seed=404,
-)
-
-materialize_bus_data_assignment(
-    grid_xlsx_path=config_xlsx,
-    assignment=assignment,
-    output_data_dir=data_dir,
 )
 
 grid = Grid(config_xlsx, verbose=0)

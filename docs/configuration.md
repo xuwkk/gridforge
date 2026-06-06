@@ -48,7 +48,7 @@ grid_config:
   solar: {}
   load: {}
 
-rescale: []
+rescale: {}
 ```
 
 - `super_config`: base-case settings.
@@ -163,7 +163,7 @@ grid_config:
       format: relative
       value: [1]
       relative_to:
-        bus_type: [4]
+        bus_type: [positive_pd]
     PMAX:
       format: relative
       value: [1.0]
@@ -331,7 +331,7 @@ BUS_IDX:
   format: relative
   value: [0.5]
   relative_to:
-    bus_type: [2]
+    bus_type: [pv]
 ```
 
 Rules:
@@ -344,13 +344,13 @@ Rules:
 
 Allowed `bus_type` tokens:
 
-- `1`: PQ buses
-- `2`: PV buses
-- `3`: slack buses
+- `1` or `pq`: PQ buses
+- `2` or `pv`: PV buses
+- `3` or `slack`: slack buses
 - `4`: buses with _positive_ `PD`
 - `positive_pd` and `pd_positive`: aliases for `4`
 
-`bus_type` can be a scalar, a list, or a comma-/pipe-separated string. Multiple tokens are interpreted as a union; e.g., `[1, 2, 3]` means all PQ, PV, and slack buses.
+`bus_type` can be a scalar, a list, or a comma-/pipe-separated string. Multiple tokens are interpreted as a union; e.g., `[pq, pv, slack]` means all PQ, PV, and slack buses.
 
 ### 7.3 Placement Groups
 
@@ -362,7 +362,7 @@ solar:
     format: relative
     value: [0.3]
     relative_to:
-      bus_type: [2]
+      bus_type: [pv]
     group: renewable
 
 wind:
@@ -370,7 +370,7 @@ wind:
     format: relative
     value: [0.3]
     relative_to:
-      bus_type: [2]
+      bus_type: [pv]
     group: renewable
 ```
 
@@ -402,21 +402,23 @@ For example, if you want the total load capacity to be scaled to 90% of the tota
 
 ```yaml
 rescale:
-  - name: load_to_active_supply_ratio  # optional
+  load_to_active_supply_ratio:         # named rescale rule
     target:                            # the sheet and column to be scaled
       sheet: load
       column: PMAX
-      aggregate: sum                   # the sum of the selected target over all rows should be rescaled t0 ...
+      aggregate: sum                   # aggregate used to measure the selected target rows
       filter:
         STATUS: 1                      # only pick up the rows with status = 1
     ratio: 0.9
     sources:                           # the sheets and columns to be used as the source/reference of the scaling
-      - sheet: gen
+      gen:
+        sheet: gen
         column: PMAX
         aggregate: sum                   # the sum of the selected source over all rows should be used as the reference of the scaling
         filter:
           STATUS: 1
-      - sheet: solar
+      solar:
+        sheet: solar
         column: PMAX
         aggregate: sum
         filter:
@@ -430,7 +432,8 @@ aggregate(target selected rows)
 = ratio * sum(aggregate(each source's selected rows))
 ```
 
-- `name` is optional.
+- Each key under `rescale` is the rule name.
+- Each key under `sources` is a source-term name.
 
 ### 8.1 Target And Source Terms
 
@@ -444,7 +447,7 @@ Each target/source term supports:
 The rule itself must include:
 
 - `ratio`
-- non-empty `sources`
+- non-empty `sources` dictionary
 - `target`
 
 ### 8.2 Filter Semantics
@@ -493,7 +496,7 @@ load:
     format: relative
     value: [1]
     relative_to:
-      bus_type: [4]   # 4 means buses with positive PD in original case file
+      bus_type: [positive_pd]   # positive_pd means buses with positive PD in original case file
 ```
 
 ### Add Renewable Assets And Replace Generators
@@ -525,7 +528,7 @@ solar:
 
 ```yaml
 rescale:
-  - name: load_to_active_supply_ratio
+  load_to_active_supply_ratio:
     target:
       sheet: load
       column: PMAX
@@ -533,9 +536,9 @@ rescale:
       filter: { STATUS: 1 }
     ratio: 0.9
     sources:
-      - { sheet: gen, column: PMAX, aggregate: sum, filter: { STATUS: 1 } }
-      - { sheet: solar, column: PMAX, aggregate: sum, filter: { STATUS: 1 } }
-      - { sheet: wind, column: PMAX, aggregate: sum, filter: { STATUS: 1 } }
+      gen: { sheet: gen, column: PMAX, aggregate: sum, filter: { STATUS: 1 } }
+      solar: { sheet: solar, column: PMAX, aggregate: sum, filter: { STATUS: 1 } }
+      wind: { sheet: wind, column: PMAX, aggregate: sum, filter: { STATUS: 1 } }
 ```
 
 ---
@@ -587,7 +590,7 @@ grid_config:
       format: relative
       value: [0.3]
       relative_to:
-        bus_type: [2]
+        bus_type: [pv]
       group: renewable
       remove_gen: true
     PMAX:
@@ -607,5 +610,5 @@ grid_config:
         column: COST_FIRST
         aggregate: max
 
-rescale: []  # no rescale rules are applied in this example
+rescale: {}  # no rescale rules are applied in this example
 ```
