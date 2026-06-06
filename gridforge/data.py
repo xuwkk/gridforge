@@ -17,6 +17,7 @@ import os
 import numpy as np
 import pandas as pd
 import yaml
+from tqdm import tqdm
 
 
 CORE_SHEETS = {"bus", "gen", "branch"}
@@ -176,8 +177,10 @@ def suggest_bus_data_assignment(
     source_data_dir: str,
     signals: Dict[str, Any],
     output_data_dir: Optional[str] = None,
+    resolved_assignment_path: Optional[str] = None,
     random_seed: int = 0,
     avoid_reuse: bool = True,
+    verbose: int = 0,
 ) -> Dict[str, Any]:
     """Create a seeded bus-to-CSV assignment from eligible source CSVs.
 
@@ -195,7 +198,13 @@ def suggest_bus_data_assignment(
     assigned_files: Set[str] = set()
     buses: Dict[int, str] = {}
 
-    for bus_idx, required_signals in sorted(required.items()):
+    required_items = sorted(required.items())
+    iterator = tqdm(
+        required_items,
+        desc="Suggesting bus data assignment",
+        disable=verbose <= 0,
+    )
+    for bus_idx, required_signals in iterator:
         candidates = _eligible_source_files(source_data_dir, file_names, signals, required_signals)
         if not candidates:
             raise ValueError(
@@ -215,7 +224,45 @@ def suggest_bus_data_assignment(
     }
     if output_data_dir is not None:
         assignment["output_data_dir"] = output_data_dir
+    if resolved_assignment_path is not None:
+        save_bus_data_assignment(assignment, resolved_assignment_path)
     return assignment
+
+
+def prepare_bus_data(
+    grid_xlsx_path: str,
+    source_data_dir: str,
+    signals: Dict[str, Any],
+    output_data_dir: str,
+    resolved_assignment_path: Optional[str] = None,
+    random_seed: int = 0,
+    avoid_reuse: bool = True,
+    verbose: int = 0,
+) -> Tuple[Dict[str, Any], Dict[int, pd.DataFrame]]:
+    """
+    Suggest a bus-data assignment, optionally save it, and materialize bus CSVs.
+
+    This is the high-level helper for the common workflow. Lower-level helpers
+    remain available when users want to inspect or edit the assignment before
+    materializing it.
+    """
+    assignment = suggest_bus_data_assignment(
+        grid_xlsx_path=grid_xlsx_path,
+        source_data_dir=source_data_dir,
+        signals=signals,
+        output_data_dir=output_data_dir,
+        resolved_assignment_path=resolved_assignment_path,
+        random_seed=random_seed,
+        avoid_reuse=avoid_reuse,
+        verbose=verbose,
+    )
+    materialized = materialize_bus_data_assignment(
+        grid_xlsx_path=grid_xlsx_path,
+        assignment=assignment,
+        output_data_dir=output_data_dir,
+        verbose=verbose,
+    )
+    return assignment, materialized
 
 
 def _parse_assignment_top_level(

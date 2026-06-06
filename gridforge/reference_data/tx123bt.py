@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 from tqdm import trange, tqdm
 
-from gridforge.data import materialize_bus_data_assignment, suggest_bus_data_assignment
+from gridforge.data import prepare_bus_data
 
 def _build_bus_to_renewable_assignment(
     xlsx_path: str = "data/Data_public/Generator_data.xlsx",
@@ -140,7 +140,7 @@ def preprocess_tx123bt_raw_data(
     # Calendar features
     # --------------------------
     # Use a fixed hourly calendar for the year (2019 is non-leap)
-    ts = pd.date_range(f"{year}-01-01 00:00:00", periods=T, freq="H")
+    ts = pd.date_range(f"{year}-01-01 00:00:00", periods=T, freq="h")
     hour0 = ts.hour.to_numpy()              # 0..23
     weekday = ts.weekday.to_numpy()         # 0..6, Monday=0
     
@@ -424,19 +424,15 @@ def construct_tx123bt_grid_data(
     print(f"Saving processed bus data to {data_dir}")
 
     signals = _tx123bt_signals(grid_xlsx_path)
-    assignment = suggest_bus_data_assignment(
+    _, materialized = prepare_bus_data(
         grid_xlsx_path=grid_xlsx_path,
         source_data_dir=processed_data_dir,
         signals=signals,
         output_data_dir=data_dir,
         random_seed=random_seed,
-    )
-    return materialize_bus_data_assignment(
-        grid_xlsx_path=grid_xlsx_path,
-        assignment=assignment,
-        output_data_dir=data_dir,
         verbose=verbose,
     )
+    return materialized
 
 
 def _tx123bt_signals(grid_xlsx_path: str) -> Dict[str, Dict[str, object]]:
