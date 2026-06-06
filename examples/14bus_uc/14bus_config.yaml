@@ -164,26 +164,26 @@ grid_config:
     RATE_A:
       format: absolute
       value:
-      - 130.3097734383326
-      - 64.1442333717417
-      - 130.26023474300433
-      - 61.166876385556556
-      - 48.13292922887795
-      - 103.57982926711709
-      - 90.06181033993072
-      - 66.78108966701933
-      - 24.503616924679253
-      - 62.53536899236958
-      - 40.4238514678819
-      - 17.8580050094832
-      - 42.37584802178161
+      - 129.4229440691038
+      - 64.61773381230594
+      - 124.50425331060464
+      - 63.300314006412705
+      - 48.85418025546216
+      - 96.86761523452502
+      - 93.3379405436764
+      - 57.69904988413388
+      - 30.124549880778158
+      - 64.54614650388923
+      - 41.23767059326343
+      - 18.27965637516219
+      - 43.97525691030005
       - 156.81855720094887
-      - 118.32643119022588
-      - 32.954190005499576
-      - 33.91572504128086
-      - 36.44927022236042
+      - 118.83377185207533
+      - 31.783743858443692
+      - 34.02627400550421
+      - 36.2900012255455
       - 10.0
-      - 33.01363503268947
+      - 33.61053164114362
   solar:
     BUS_IDX:
       format: absolute
@@ -258,27 +258,30 @@ grid_config:
       value:
       - 100.0
 rescale:
-- name: load_to_active_supply_ratio
-  target:
-    sheet: load
-    column: PMAX
-    aggregate: sum
-    filter:
-      STATUS: 1
-  ratio: 0.9
-  sources:
-  - sheet: gen
-    column: PMAX
-    aggregate: sum
-    filter:
-      STATUS: 1
-  - sheet: solar
-    column: PMAX
-    aggregate: sum
-    filter:
-      STATUS: 1
-  - sheet: wind
-    column: PMAX
-    aggregate: sum
-    filter:
-      STATUS: 1
+  load_to_active_supply_ratio:
+    target:
+      sheet: load
+      column: PMAX
+      aggregate: sum
+      filter:
+        STATUS: 1
+    ratio: 0.9
+    sources:
+      gen:
+        sheet: gen
+        column: PMAX
+        aggregate: sum
+        filter:
+          STATUS: 1
+      solar:
+        sheet: solar
+        column: PMAX
+        aggregate: sum
+        filter:
+          STATUS: 1
+      wind:
+        sheet: wind
+        column: PMAX
+        aggregate: sum
+        filter:
+          STATUS: 1

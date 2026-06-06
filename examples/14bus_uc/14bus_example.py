@@ -337,9 +337,7 @@ if __name__ == "__main__":
     from gridforge.construct import construct_grid_config
     from gridforge.data import (
         load_bus_data_assignment,
-        materialize_bus_data_assignment,
-        save_bus_data_assignment,
-        suggest_bus_data_assignment,
+        prepare_bus_data,
     )
     from gridforge.plot import draw_grid_topology, draw_grid_topology_interactive
     # ------------------------------------------------------------------
@@ -395,18 +393,13 @@ if __name__ == "__main__":
         source_data_path = REPO / source_data_path
 
     if source_data_path.exists():
-        assignment = suggest_bus_data_assignment(
+        assignment, _ = prepare_bus_data(
             grid_xlsx_path=config_path_xlsx,
             source_data_dir=str(source_data_path),
             signals=assignment_template["signals"],
             output_data_dir=data_dir,
+            resolved_assignment_path=resolved_assignment_path,
             random_seed=random_seed,
-        )
-        save_bus_data_assignment(assignment, resolved_assignment_path)
-        materialize_bus_data_assignment(
-            grid_xlsx_path=config_path_xlsx,
-            assignment=assignment,
-            output_data_dir=data_dir,
             verbose=verbose,
         )
         print(f"Saved resolved bus-data assignment to {resolved_assignment_path}")
