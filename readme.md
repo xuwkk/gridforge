@@ -34,10 +34,10 @@ generated `BUS_IDX` values in the workbook.
 
 ## Installation
 
-Install the latest package code:
+Install the latest release from PyPI:
 
 ```bash
-pip install "git+https://github.com/xuwkk/gridforge.git"
+pip install powergridforge
 ```
 
 To run the examples and edit the docs, clone the repository:

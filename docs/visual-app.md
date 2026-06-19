@@ -27,11 +27,10 @@ For the app plus optional plotting dependencies:
 pip install -e ".[full]"
 ```
 
-If GridForge is installed from GitHub, include the app extra in the package
-specifier:
+If GridForge is installed from PyPI, include the app extra:
 
 ```bash
-pip install "gridforge[app] @ git+https://github.com/xuwkk/gridforge.git"
+pip install "powergridforge[app]"
 ```
 
 ## Launch

@@ -22,10 +22,10 @@ GridForge is developed by Wangkun Xu ([GitHub](https://github.com/xuwkk)).
 
 ## Installation
 
-Install the latest commit:
+Install the latest release from PyPI:
 
 ```bash
-pip install "git+https://github.com/xuwkk/gridforge.git"
+pip install powergridforge
 ```
 
 For local development:

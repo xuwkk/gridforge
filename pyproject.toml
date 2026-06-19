@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=68", "wheel", "setuptools_scm[toml]>=8"]
+requires = ["setuptools>=77", "wheel", "setuptools_scm[toml]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gridforge"
+name = "powergridforge"
 dynamic = ["version"]
 description = "Power system configuration and optimization toolkit."
 readme = "readme.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Wangkun Xu" }]
 dependencies = [
   "numpy>=1.23",
@@ -18,7 +19,7 @@ dependencies = [
   "openpyxl>=3.1",
   "cvxpy>=1.3",
   "PYPOWER>=5.1",
-  "cvxpy-summary @ git+https://github.com/xuwkk/cvxpy_summary.git@v0.0.1"
+  "cvxpy-summary>=0.1.2"
 ]
 
 [project.scripts]
