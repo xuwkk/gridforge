@@ -85,6 +85,10 @@ assignment, materialized = prepare_bus_data(
 )
 ```
 
+The template supplies only `signals`; the source and output directories are
+explicit runtime arguments. The generated resolved assignment records both
+directories together with the concrete bus-to-CSV mapping.
+
 This reads source data files and writes case-specific files such as:
 
 ```text

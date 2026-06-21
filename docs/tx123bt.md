@@ -141,6 +141,10 @@ assignment, materialized = prepare_bus_data(
 )
 ```
 
+The assignment template contains signal definitions only. The generated
+resolved assignment stores these runtime directories and the selected source
+file for each bus.
+
 This writes files such as:
 
 ```text

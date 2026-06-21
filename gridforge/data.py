@@ -259,7 +259,6 @@ def prepare_bus_data(
     materialized = materialize_bus_data_assignment(
         grid_xlsx_path=grid_xlsx_path,
         assignment=assignment,
-        output_data_dir=output_data_dir,
         verbose=verbose,
     )
     return assignment, materialized

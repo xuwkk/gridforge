@@ -358,6 +358,7 @@ if __name__ == "__main__":
     config_path_xlsx = str(HERE / "14bus_config.xlsx")
     data_assignment_path = str(HERE / "14bus_data_assignment.yaml")
     resolved_assignment_path = str(HERE / "14bus_data_assignment_resolved.yaml")
+    source_data_path = REPO / "data/bus_data"
     data_dir = str(HERE / "14bus_data")
     random_seed = 404  # Set random seed for reproducibility
     verbose = 0
@@ -386,10 +387,6 @@ if __name__ == "__main__":
     # BUS_IDX values from the generated workbook and suggests a concrete mapping
     # from the available source CSV pool.
     assignment_template = load_bus_data_assignment(data_assignment_path)
-    source_data_dir = assignment_template.get("source_data_dir", "data/bus_data")
-    source_data_path = Path(source_data_dir)
-    if not source_data_path.is_absolute():
-        source_data_path = REPO / source_data_path
 
     if source_data_path.exists():
         assignment, _ = prepare_bus_data(
