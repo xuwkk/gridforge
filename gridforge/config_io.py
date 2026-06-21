@@ -49,7 +49,7 @@ def update_grid_excel(
 
             series_values = np.asarray(values)
             if series_values.ndim == 0:
-                sheet_dict[sheet_name].loc[:, column_name] = series_values.item()
+                sheet_dict[sheet_name][column_name] = series_values.item()
                 continue
 
             if len(series_values) != len(sheet_dict[sheet_name]):
@@ -57,7 +57,7 @@ def update_grid_excel(
                     f"Update for {sheet_name}.{column_name} has length {len(series_values)}, "
                     f"but sheet '{sheet_name}' has {len(sheet_dict[sheet_name])} rows."
                 )
-            sheet_dict[sheet_name].loc[:, column_name] = series_values
+            sheet_dict[sheet_name][column_name] = series_values
 
     save_grid_excel(sheet_dict, grid_xlsx_path)
 
