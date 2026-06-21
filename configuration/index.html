@@ -1,0 +1,1819 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Power-system configuration and optimization toolkit">
+      
+      
+      
+      
+        <link rel="prev" href="../visual-app/">
+      
+      
+        <link rel="next" href="../bus-data-assignment/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Configuration - GridForge</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gridforge-configuration-definition" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="GridForge" class="md-header__button md-logo" aria-label="GridForge" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GridForge
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/xuwkk/gridforge" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    xuwkk/gridforge
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="GridForge" class="md-nav__button md-logo" aria-label="GridForge" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    GridForge
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/xuwkk/gridforge" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    xuwkk/gridforge
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visual-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visual Config App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-top-level-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Top-Level Shape
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-construction-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Construction Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-core-sheets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Core Sheets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-custom-sheets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Custom Sheets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-column-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) Column Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5) Column Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-absolute-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Absolute Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-relative-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Relative Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-relative-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6) Relative Mapping
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6) Relative Mapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#map_by-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        map_by: row
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map_by-bus_idx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        map_by: bus_idx
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aggregate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-bus_idx-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7) BUS_IDX Placement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7) BUS_IDX Placement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-absolute-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Absolute Placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-relative-placement-by-bus-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Relative Placement By Bus Pool
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-placement-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Placement Groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-generator-replacement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Generator Replacement
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-rescale-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8) Rescale Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8) Rescale Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-target-and-source-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Target And Source Terms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-filter-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Filter Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-common-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9) Common Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9) Common Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-a-local-base-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use A Local Base Case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-load-at-positive-demand-buses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add Load At Positive-Demand Buses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-renewable-assets-and-replace-generators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add Renewable Assets And Replace Generators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rescale-load-to-active-supply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rescale Load To Active Supply
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-common-validation-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10) Common Validation Failures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-minimal-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11) Minimal Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bus-data-assignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bus Data Assignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grid-data-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid And Data Access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tx123bt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TX-123BT Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../copyright/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Copyright And License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-pages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Pages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-top-level-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Top-Level Shape
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-construction-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Construction Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-core-sheets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Core Sheets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-custom-sheets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Custom Sheets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-column-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) Column Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5) Column Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-absolute-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Absolute Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-relative-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Relative Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-relative-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6) Relative Mapping
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6) Relative Mapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#map_by-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        map_by: row
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map_by-bus_idx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        map_by: bus_idx
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aggregate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-bus_idx-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7) BUS_IDX Placement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7) BUS_IDX Placement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-absolute-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Absolute Placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-relative-placement-by-bus-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Relative Placement By Bus Pool
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-placement-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Placement Groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-generator-replacement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Generator Replacement
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-rescale-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8) Rescale Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8) Rescale Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-target-and-source-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Target And Source Terms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-filter-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Filter Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-common-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9) Common Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9) Common Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-a-local-base-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use A Local Base Case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-load-at-positive-demand-buses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add Load At Positive-Demand Buses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-renewable-assets-and-replace-generators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add Renewable Assets And Replace Generators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rescale-load-to-active-supply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rescale Load To Active Supply
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-common-validation-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10) Common Validation Failures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-minimal-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11) Minimal Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="gridforge-configuration-definition">GridForge Configuration Definition<a class="headerlink" href="#gridforge-configuration-definition" title="Permanent link">&para;</a></h1>
+<p>This document defines the GridForge YAML format and the execution logic used by
+<code>construct_grid_config(...)</code>.</p>
+<p>GridForge configurations are intentionally sheet-oriented. A configuration
+starts from a PYPOWER/MATPOWER-style network, edits the core sheets, adds custom
+asset sheets attached to buses, then optionally rebalances aggregate quantities.</p>
+<p>This document covers static grid construction only. Time-series CSV assignment
+is a separate workflow handled by <code>gridforge.data</code> and described in
+<a href="../bus-data-assignment/">bus-data-assignment.md</a>.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#1-top-level-shape">1) Top-Level Shape</a></li>
+<li><a href="#2-construction-pipeline">2) Construction Pipeline</a></li>
+<li><a href="#3-core-sheets">3) Core Sheets</a></li>
+<li><a href="#4-custom-sheets">4) Custom Sheets</a></li>
+<li><a href="#5-column-rules">5) Column Rules</a></li>
+<li><a href="#6-relative-mapping">6) Relative Mapping</a></li>
+<li><a href="#7-bus_idx-placement">7) BUS_IDX Placement</a></li>
+<li><a href="#8-rescale-rules">8) Rescale Rules</a></li>
+<li><a href="#9-common-patterns">9) Common Patterns</a></li>
+<li><a href="#10-common-validation-failures">10) Common Validation Failures</a></li>
+<li><a href="#11-minimal-example">11) Minimal Example</a></li>
+</ul>
+<hr />
+<h2 id="1-top-level-shape">1) Top-Level Shape<a class="headerlink" href="#1-top-level-shape" title="Permanent link">&para;</a></h2>
+<p>The idea of the configuration is to define several useful rules to <em>efficiently</em> modify basic grid settings defined by MATPOWER/PYPOWER. </p>
+<blockquote>
+<p>In short: manual setting means editing many rows in Excel by hand. GridForge config construction lets the user describe patterns, placement logic, relative values, and system-level scaling, then generates the consistent grid workbook automatically.</p>
+</blockquote>
+<p>The top-level shape of the configuration is as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">super_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pypower_case_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case14</span>
+<span class="w">  </span><span class="nt">baseMVA</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+
+<span class="nt">grid_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">bus</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">  </span><span class="nt">gen</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">  </span><span class="nt">branch</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">  </span><span class="nt">solar</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">  </span><span class="nt">load</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+
+<span class="nt">rescale</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+</code></pre></div>
+<ul>
+<li><code>super_config</code>: base-case settings.</li>
+<li><code>grid_config</code>: rules for core sheets and custom asset sheets attached to
+  buses.</li>
+<li><code>rescale</code>: optional post-build aggregate balancing rules.</li>
+</ul>
+<p><code>pypower_case_name</code> identifies the base case to load. It can be:</p>
+<ul>
+<li>a built-in PYPOWER case name, such as <code>case14</code>, see all the built-in cases <a href="../pypower-case/">here</a>.</li>
+<li>a path to a <em>local</em> PYPOWER-style <code>.py</code> case file</li>
+<li>a path to a <em>local</em> MATPOWER <code>.m</code> case file, see <a href="https://github.com/MATPOWER/matpower/tree/master/data">here</a></li>
+</ul>
+<p>Relative file paths are resolved relative to the YAML file location.</p>
+<p><code>grid_config</code> keys are interpreted by sheet name:</p>
+<ul>
+<li>core sheets: <code>bus</code>, <code>gen</code>, <code>branch</code></li>
+<li>custom sheets: every other key, such as <code>load</code>, <code>solar</code>, <code>wind</code>, <code>storage</code></li>
+</ul>
+<blockquote>
+<p>The best way to understand the configuration is to look at the
+<a href="https://github.com/xuwkk/gridforge/blob/main/examples/14bus_uc/14bus_config.yaml">14-bus configuration example</a>.</p>
+</blockquote>
+<hr />
+<h2 id="2-construction-pipeline">2) Construction Pipeline<a class="headerlink" href="#2-construction-pipeline" title="Permanent link">&para;</a></h2>
+<p>Construction runs in this order:</p>
+<ol>
+<li>Load the base case named by <code>super_config.pypower_case_name</code>.</li>
+<li>Convert base arrays to DataFrames with GridForge column names.</li>
+<li>Merge PYPOWER/MATPOWER <code>gencost</code> rows into <code>gen</code> as <code>COST_*</code> columns.</li>
+<li>Renumber buses to dense 1-based <code>BUS_IDX</code> values and rewrite generator and
+   branch bus references accordingly.</li>
+<li>Apply <code>grid_config</code> rules to existing core sheets.</li>
+<li>Build custom sheets in YAML order.</li>
+<li>Apply <code>rescale</code> rules. See <a href="#8-rescale-rules">Rescale Rules</a> for more details.</li>
+<li>Write the resulting Excel workbook.</li>
+</ol>
+<hr />
+<h2 id="3-core-sheets">3) Core Sheets<a class="headerlink" href="#3-core-sheets" title="Permanent link">&para;</a></h2>
+<p>GridForge core sheets are:</p>
+<ul>
+<li><code>bus</code></li>
+<li><code>gen</code></li>
+<li><code>branch</code></li>
+</ul>
+<p>Base PYPOWER columns are renamed as follows:</p>
+<ul>
+<li>bus index: <code>BUS_IDX</code></li>
+<li>generator bus index: <code>BUS_IDX</code></li>
+<li>branch endpoints: <code>F_BUS_IDX</code>, <code>T_BUS_IDX</code></li>
+<li>status fields: <code>STATUS</code></li>
+</ul>
+<p>Generator cost data is not kept as a separate <code>gencost</code> sheet in GridForge. It
+is merged into <code>gen</code> during loading:</p>
+<table>
+<thead>
+<tr>
+<th>Source <code>gencost</code> column</th>
+<th>GridForge <code>gen</code> column</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MODEL</code></td>
+<td><code>COST_MODEL</code></td>
+</tr>
+<tr>
+<td><code>STARTUP</code></td>
+<td><code>COST_STARTUP</code></td>
+</tr>
+<tr>
+<td><code>SHUTDOWN</code></td>
+<td><code>COST_SHUTDOWN</code></td>
+</tr>
+<tr>
+<td><code>ORDER</code></td>
+<td><code>COST_ORDER</code></td>
+</tr>
+<tr>
+<td><code>SECOND</code></td>
+<td><code>COST_SECOND</code></td>
+</tr>
+<tr>
+<td><code>FIRST</code></td>
+<td><code>COST_FIRST</code></td>
+</tr>
+<tr>
+<td><code>ZERO</code></td>
+<td><code>COST_ZERO</code></td>
+</tr>
+</tbody>
+</table>
+<p>Rules under a core sheet can overwrite existing columns or add extra columns.</p>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">grid_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">gen</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">PMIN</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.1</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">        </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">row</span>
+<span class="w">    </span><span class="nt">COST_FIRST</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absolute</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">5</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>The detailed rules for each column are described in <a href="#5-column-rules">Column Rules</a>.</p>
+<hr />
+<h2 id="4-custom-sheets">4) Custom Sheets<a class="headerlink" href="#4-custom-sheets" title="Permanent link">&para;</a></h2>
+<p>Every custom sheet <em>must define</em> <code>BUS_IDX</code>.</p>
+<p>Custom sheets are asset tables attached to buses. <code>BUS_IDX</code> determines:</p>
+<ul>
+<li>how many rows the sheet has,</li>
+<li>which bus each asset row is attached to,</li>
+<li>the incidence matrix exposed later as <code>grid.custom["name"].Cbus</code>.</li>
+</ul>
+<p>For custom sheets, <code>STATUS</code> is automatically added as <code>1</code> unless you define it
+explicitly.</p>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">grid_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">load</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">bus_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">positive_pd</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">PMAX</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.0</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bus</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PD</span>
+<span class="w">        </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bus_idx</span>
+</code></pre></div>
+<p>If a custom sheet omits <code>BUS_IDX</code>, construction raises an error.</p>
+<hr />
+<h2 id="5-column-rules">5) Column Rules<a class="headerlink" href="#5-column-rules" title="Permanent link">&para;</a></h2>
+<p>Every non-<code>BUS_IDX</code> column rule has this shape:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;COLUMN_NAME&gt;</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absolute | relative</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="w"> </span><span class="nv">...</span><span class="w"> </span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">random_ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">  </span><span class="c1"># optional</span>
+<span class="w">  </span><span class="nt">relative_to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span><span class="w">   </span><span class="c1"># required when format: relative</span>
+</code></pre></div>
+<h3 id="51-absolute-rules">5.1 Absolute Rules<a class="headerlink" href="#51-absolute-rules" title="Permanent link">&para;</a></h3>
+<p>An absolute rule writes values directly:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">PMAX</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absolute</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">160</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">140</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">100</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p><code>value</code> can be:</p>
+<ul>
+<li>one item, which is broadcast to every target row</li>
+<li>one item per target row</li>
+</ul>
+<p>If <code>random_ratio: r</code> is provided, values are multiplied by:</p>
+<div class="highlight"><pre><span></span><code>1 + U[-r, r]
+</code></pre></div>
+<p>Use <code>random_ratio</code> in the range <code>[0, 1]</code>; the constructor rejects values
+outside that range.</p>
+<h3 id="52-relative-rules">5.2 Relative Rules<a class="headerlink" href="#52-relative-rules" title="Permanent link">&para;</a></h3>
+<p>A relative rule multiplies <code>value</code> by a referenced base quantity:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">PMIN</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.1</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">    </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">    </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">row</span>
+</code></pre></div>
+<p><code>relative_to</code> must include:</p>
+<ul>
+<li><code>sheet</code>: the sheet name to reference such as <code>gen</code>, <code>bus</code>, <code>branch</code>, etc.</li>
+<li><code>column</code>: the column name to reference such as <code>PMAX</code>, <code>PD</code>, <code>QMAX</code>, etc.</li>
+<li>exactly <em>one</em> of:</li>
+<li><code>map_by: row | bus_idx</code></li>
+<li><code>aggregate: sum | mean | min | max</code></li>
+</ul>
+<p>Relative references read from the current in-memory sheet state. That means
+core-sheet edits are visible to custom sheets, and earlier custom sheets can
+affect later custom sheets if they use options such as <code>remove_gen</code>.</p>
+<h2 id="6-relative-mapping">6) Relative Mapping<a class="headerlink" href="#6-relative-mapping" title="Permanent link">&para;</a></h2>
+<h3 id="map_by-row"><code>map_by: row</code><a class="headerlink" href="#map_by-row" title="Permanent link">&para;</a></h3>
+<p>Use row mapping when source and target rows are aligned by position.</p>
+<p>Rules:</p>
+<ul>
+<li>source and target row counts must match exactly</li>
+<li>source row <code>i</code> maps to target row <code>i</code></li>
+</ul>
+<p>Example: The minimum generation capacity is set to 10% of the maximum generation capacity for each generator.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">PMIN</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.1</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">    </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">    </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">row</span>
+</code></pre></div>
+<h3 id="map_by-bus_idx"><code>map_by: bus_idx</code><a class="headerlink" href="#map_by-bus_idx" title="Permanent link">&para;</a></h3>
+<p>Use bus-index mapping when values should follow <code>BUS_IDX</code>.</p>
+<p>Rules:</p>
+<ul>
+<li>source and target sheets must both contain <code>BUS_IDX</code></li>
+<li>duplicate source rows on the same bus are summed</li>
+<li>duplicate target rows on the same bus split the source value evenly</li>
+<li>missing source buses raise an error</li>
+</ul>
+<p>Example: The base active demand is set to the active demand of the same bus.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">PD_BASE</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.0</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bus</span>
+<span class="w">    </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PD</span>
+<span class="w">    </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bus_idx</span>
+</code></pre></div>
+<h3 id="aggregate"><code>aggregate</code><a class="headerlink" href="#aggregate" title="Permanent link">&para;</a></h3>
+<p>Use aggregation when the source column should become one scalar:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">CURTAIL_COST</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">    </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">COST_FIRST</span>
+<span class="w">    </span><span class="nt">aggregate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">max</span>
+</code></pre></div>
+<p>This means that the curtailment cost is set to the 10 times the maximum first cost of the generators.</p>
+<div class="highlight"><pre><span></span><code>CURTAIL_COST = 10 * max(gen.COST_FIRST)
+</code></pre></div>
+<hr />
+<h2 id="7-bus_idx-placement">7) BUS_IDX Placement<a class="headerlink" href="#7-bus_idx-placement" title="Permanent link">&para;</a></h2>
+<p><code>BUS_IDX</code> is a special required rule for every custom sheet.</p>
+<h3 id="71-absolute-placement">7.1 Absolute Placement<a class="headerlink" href="#71-absolute-placement" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absolute</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">10</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>Rules:</p>
+<ul>
+<li>every value must exist in <code>bus.BUS_IDX</code></li>
+<li>row count equals the number of listed bus IDs</li>
+</ul>
+<h3 id="72-relative-placement-by-bus-pool">7.2 Relative Placement By Bus Pool<a class="headerlink" href="#72-relative-placement-by-bus-pool" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.5</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">bus_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">pv</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>Rules:</p>
+<ul>
+<li><code>value</code> must contain exactly one ratio</li>
+<li>the ratio must be <code>&lt;= 1</code></li>
+<li>candidate buses are selected from <code>relative_to.bus_type</code></li>
+<li>selected count is <code>max(1, int(ratio * pool_size))</code>; e.g., at least 1 bus is selected</li>
+<li>sampling is without replacement</li>
+</ul>
+<p>Allowed <code>bus_type</code> tokens:</p>
+<ul>
+<li><code>1</code> or <code>pq</code>: PQ buses</li>
+<li><code>2</code> or <code>pv</code>: PV buses</li>
+<li><code>3</code> or <code>slack</code>: slack buses</li>
+<li><code>4</code>: buses with <em>positive</em> <code>PD</code></li>
+<li><code>positive_pd</code> and <code>pd_positive</code>: aliases for <code>4</code></li>
+</ul>
+<p><code>bus_type</code> can be a scalar, a list, or a comma-/pipe-separated string. Multiple tokens are interpreted as a union; e.g., <code>[pq, pv, slack]</code> means all PQ, PV, and slack buses.</p>
+<h3 id="73-placement-groups">7.3 Placement Groups<a class="headerlink" href="#73-placement-groups" title="Permanent link">&para;</a></h3>
+<p><code>group</code> prevents sheets in the same group from selecting the same bus.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">solar</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.3</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">bus_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">pv</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">renewable</span>
+
+<span class="nt">wind</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.3</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">bus_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">pv</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">renewable</span>
+</code></pre></div>
+<p>Here <code>solar</code> and <code>wind</code> cannot use the same selected bus.</p>
+<h3 id="74-generator-replacement">7.4 Generator Replacement<a class="headerlink" href="#74-generator-replacement" title="Permanent link">&para;</a></h3>
+<p><code>remove_gen: true</code> removes generator rows on selected buses after the custom
+sheet is built.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">solar</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absolute</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">remove_gen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p>This will remove the generators on buses 2 and 8 from the grid configuration (if they exist).</p>
+<hr />
+<h2 id="8-rescale-rules">8) Rescale Rules<a class="headerlink" href="#8-rescale-rules" title="Permanent link">&para;</a></h2>
+<p><code>rescale</code> runs after all core and custom sheets are built. It multiplies
+selected target rows by one scale factor so a target aggregate matches a ratio of source aggregates.</p>
+<p>For example, if you want the total load capacity to be scaled to 90% of the total generation capacity (generators + solar), you can use the following rescale rule:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">rescale</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">load_to_active_supply_ratio</span><span class="p">:</span><span class="w">         </span><span class="c1"># named rescale rule</span>
+<span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w">                            </span><span class="c1"># the sheet and column to be scaled</span>
+<span class="w">      </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">load</span>
+<span class="w">      </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">      </span><span class="nt">aggregate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum</span><span class="w">                   </span><span class="c1"># aggregate used to measure the selected target rows</span>
+<span class="w">      </span><span class="nt">filter</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">STATUS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w">                      </span><span class="c1"># only pick up the rows with status = 1</span>
+<span class="w">    </span><span class="nt">ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+<span class="w">    </span><span class="nt">sources</span><span class="p">:</span><span class="w">                           </span><span class="c1"># the sheets and columns to be used as the source/reference of the scaling</span>
+<span class="w">      </span><span class="nt">gen</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">        </span><span class="nt">aggregate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum</span><span class="w">                   </span><span class="c1"># the sum of the selected source over all rows should be used as the reference of the scaling</span>
+<span class="w">        </span><span class="nt">filter</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">STATUS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">      </span><span class="nt">solar</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solar</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">        </span><span class="nt">aggregate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum</span>
+<span class="w">        </span><span class="nt">filter</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">STATUS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</code></pre></div>
+<p>The target after scaling is:</p>
+<div class="highlight"><pre><span></span><code>aggregate(target selected rows)
+= ratio * sum(aggregate(each source&#39;s selected rows))
+</code></pre></div>
+<ul>
+<li>Each key under <code>rescale</code> is the rule name.</li>
+<li>Each key under <code>sources</code> is a source-term name.</li>
+</ul>
+<h3 id="81-target-and-source-terms">8.1 Target And Source Terms<a class="headerlink" href="#81-target-and-source-terms" title="Permanent link">&para;</a></h3>
+<p>Each target/source term supports:</p>
+<ul>
+<li><code>sheet</code>: sheet name</li>
+<li><code>column</code>: numeric column to aggregate</li>
+<li><code>aggregate</code>: <code>sum</code>, <code>mean</code>, <code>min</code>, or <code>max</code>; default is <code>sum</code></li>
+<li><code>filter</code>: optional current-sheet filter</li>
+</ul>
+<p>The rule itself must include:</p>
+<ul>
+<li><code>ratio</code></li>
+<li>non-empty <code>sources</code> dictionary</li>
+<li><code>target</code></li>
+</ul>
+<h3 id="82-filter-semantics">8.2 Filter Semantics<a class="headerlink" href="#82-filter-semantics" title="Permanent link">&para;</a></h3>
+<p>Filters are current-sheet scoped only.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">filter</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">STATUS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">ZONE</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<h2 id="9-common-patterns">9) Common Patterns<a class="headerlink" href="#9-common-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="use-a-local-base-case">Use A Local Base Case<a class="headerlink" href="#use-a-local-base-case" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">super_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pypower_case_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cases/my_case.py</span>
+<span class="w">  </span><span class="nt">baseMVA</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</code></pre></div>
+<p>or:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">super_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pypower_case_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cases/my_case.m</span>
+<span class="w">  </span><span class="nt">baseMVA</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</code></pre></div>
+<p>Local <code>.py</code> files should define a PYPOWER-style function with the same name as
+the file stem. For example, <code>cases/my_case.py</code> should define <code>my_case()</code> and
+return a PYPOWER case dictionary. See <a href="https://github.com/rwl/PYPOWER/blob/master/pypower/case14.py">a case14.py example</a>.</p>
+<p>MATPOWER <code>.m</code> files are converted through GridForge's built-in converter (see <a href="https://github.com/xuwkk/gridforge/blob/main/gridforge/matpower_io.py">matpower_io.py</a>). The
+converter supports common literal MATPOWER case files, but it does not execute
+arbitrary MATLAB code. If a <code>.m</code> file builds arrays programmatically, load it in
+MATLAB/Octave first and export a literal case file before using it in GridForge. See <a href="https://github.com/MATPOWER/matpower/blob/master/data/case14.m">a case14.m example</a>.</p>
+<h3 id="add-load-at-positive-demand-buses">Add Load At Positive-Demand Buses<a class="headerlink" href="#add-load-at-positive-demand-buses" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">load</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">bus_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">positive_pd</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># positive_pd means buses with positive PD in original case file</span>
+</code></pre></div>
+<h3 id="add-renewable-assets-and-replace-generators">Add Renewable Assets And Replace Generators<a class="headerlink" href="#add-renewable-assets-and-replace-generators" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">solar</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absolute</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">renewable</span>
+<span class="w">    </span><span class="nt">remove_gen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">PMAX</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.0</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">      </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">      </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bus_idx</span><span class="w">   </span><span class="c1"># map the PMAX of the generators to the PMAX of the solar assets on the same buses</span>
+<span class="w">  </span><span class="nt">CURTAIL_COST</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">      </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">COST_FIRST</span>
+<span class="w">      </span><span class="nt">aggregate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">max</span>
+</code></pre></div>
+<h3 id="rescale-load-to-active-supply">Rescale Load To Active Supply<a class="headerlink" href="#rescale-load-to-active-supply" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">rescale</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">load_to_active_supply_ratio</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">target</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">load</span>
+<span class="w">      </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">      </span><span class="nt">aggregate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum</span>
+<span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> STATUS</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+<span class="w">    </span><span class="nt">sources</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">gen</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> sheet</span><span class="p">:</span><span class="w"> </span><span class="nv">gen</span><span class="p p-Indicator">,</span><span class="nt"> column</span><span class="p">:</span><span class="w"> </span><span class="nv">PMAX</span><span class="p p-Indicator">,</span><span class="nt"> aggregate</span><span class="p">:</span><span class="w"> </span><span class="nv">sum</span><span class="p p-Indicator">,</span><span class="nt"> filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> STATUS</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">solar</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> sheet</span><span class="p">:</span><span class="w"> </span><span class="nv">solar</span><span class="p p-Indicator">,</span><span class="nt"> column</span><span class="p">:</span><span class="w"> </span><span class="nv">PMAX</span><span class="p p-Indicator">,</span><span class="nt"> aggregate</span><span class="p">:</span><span class="w"> </span><span class="nv">sum</span><span class="p p-Indicator">,</span><span class="nt"> filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> STATUS</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">wind</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> sheet</span><span class="p">:</span><span class="w"> </span><span class="nv">wind</span><span class="p p-Indicator">,</span><span class="nt"> column</span><span class="p">:</span><span class="w"> </span><span class="nv">PMAX</span><span class="p p-Indicator">,</span><span class="nt"> aggregate</span><span class="p">:</span><span class="w"> </span><span class="nv">sum</span><span class="p p-Indicator">,</span><span class="nt"> filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> STATUS</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<hr />
+<h2 id="10-common-validation-failures">10) Common Validation Failures<a class="headerlink" href="#10-common-validation-failures" title="Permanent link">&para;</a></h2>
+<p>The following are common validation failures that the constructor raises:</p>
+<ul>
+<li>missing top-level <code>super_config</code> or <code>grid_config</code></li>
+<li>unsupported <code>format</code></li>
+<li><code>format: relative</code> without <code>relative_to</code></li>
+<li><code>relative_to</code> missing <code>sheet</code> or <code>column</code></li>
+<li><code>relative_to</code> using both <code>map_by</code> and <code>aggregate</code></li>
+<li>custom sheet without <code>BUS_IDX</code></li>
+<li>relative <code>BUS_IDX</code> without <code>relative_to.bus_type</code></li>
+<li>absolute <code>BUS_IDX</code> containing IDs outside <code>bus.BUS_IDX</code></li>
+<li>value list length is neither <code>1</code> nor the target row count</li>
+<li><code>map_by: row</code> source and target row counts differ</li>
+<li><code>map_by: bus_idx</code> source or target lacks <code>BUS_IDX</code></li>
+<li><code>map_by: bus_idx</code> cannot find a source value for a target bus</li>
+<li><code>group</code> placement has too few available buses</li>
+<li><code>remove_gen</code> is not boolean</li>
+<li>rescale source/target filters select zero rows</li>
+<li>rescale target aggregate is zero but requested target is nonzero</li>
+</ul>
+<hr />
+<h2 id="11-minimal-example">11) Minimal Example<a class="headerlink" href="#11-minimal-example" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">super_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pypower_case_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case14</span>
+<span class="w">  </span><span class="nt">baseMVA</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+
+<span class="nt">grid_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">gen</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">PMIN</span><span class="p">:</span>
+<span class="w">      </span><span class="c1"># The minimum generation capacity is set to 20% of the maximum generation capacity for each generator.</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.2</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">        </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">row</span>
+
+<span class="w">  </span><span class="nt">solar</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">BUS_IDX</span><span class="p">:</span>
+<span class="w">      </span><span class="c1"># The solar assets are randomly placed on 30% of the PV buses.</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.3</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">bus_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">pv</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">renewable</span>
+<span class="w">      </span><span class="nt">remove_gen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">PMAX</span><span class="p">:</span>
+<span class="w">      </span><span class="c1"># The PMAX of the solar assets is set to 1.0 times the PMAX of the generators on the same buses. This is correct because the solar assets are placed on the same buses as the generators (type 2 bus)</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.0</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PMAX</span>
+<span class="w">        </span><span class="nt">map_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bus_idx</span>
+<span class="w">    </span><span class="nt">CURTAIL_COST</span><span class="p">:</span>
+<span class="w">      </span><span class="c1"># The curtailment cost is set to 10 times the maximum first cost of the generators.</span>
+<span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relative</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">relative_to</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">COST_FIRST</span>
+<span class="w">        </span><span class="nt">aggregate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">max</span>
+
+<span class="nt">rescale</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span><span class="w">  </span><span class="c1"># no rescale rules are applied in this example</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

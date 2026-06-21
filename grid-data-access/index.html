@@ -1,0 +1,1506 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Power-system configuration and optimization toolkit">
+      
+      
+      
+      
+        <link rel="prev" href="../bus-data-assignment/">
+      
+      
+        <link rel="next" href="../tx123bt/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Grid And Data Access - GridForge</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#grid-and-data-access" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="GridForge" class="md-header__button md-logo" aria-label="GridForge" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GridForge
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Grid And Data Access
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/xuwkk/gridforge" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    xuwkk/gridforge
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="GridForge" class="md-nav__button md-logo" aria-label="GridForge" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    GridForge
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/xuwkk/gridforge" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    xuwkk/gridforge
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visual-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visual Config App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bus-data-assignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bus Data Assignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid And Data Access
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid And Data Access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level entries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-raw-tables-gridsheets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Raw tables: grid.sheets[...]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-core-sheets-gridcore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Core sheets: grid.core.*
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Core sheets: grid.core.*">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gridcorebus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grid.core.bus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gridcoregen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grid.core.gen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gridcorebranch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grid.core.branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-custom-sheets-attached-to-buses-gridcustom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Custom Sheets Attached To Buses: grid.custom[...]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-convenience-aliases-gridsheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Convenience aliases: grid.&lt;sheet&gt;
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-time-series-data-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Time-series data: Data(...)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Time-series data: Data(...)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_series-vs-get_column" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_series(...) vs get_column(...)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-methods-on-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helper methods on wrappers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper methods on wrappers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core wrappers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom wrappers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important conventions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Important conventions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-field-names-become-lowercase-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Field names become lowercase attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-bus-indices-are-0-based-inside-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. BUS indices are 0-based inside Grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cbus-maps-sheet-rows-to-buses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Cbus maps sheet rows to buses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-usage-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended usage pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tx123bt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TX-123BT Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../copyright/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Copyright And License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-pages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Pages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level entries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-raw-tables-gridsheets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Raw tables: grid.sheets[...]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-core-sheets-gridcore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Core sheets: grid.core.*
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Core sheets: grid.core.*">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gridcorebus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grid.core.bus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gridcoregen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grid.core.gen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gridcorebranch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grid.core.branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-custom-sheets-attached-to-buses-gridcustom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Custom Sheets Attached To Buses: grid.custom[...]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-convenience-aliases-gridsheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Convenience aliases: grid.&lt;sheet&gt;
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-time-series-data-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Time-series data: Data(...)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Time-series data: Data(...)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_series-vs-get_column" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_series(...) vs get_column(...)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-methods-on-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helper methods on wrappers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper methods on wrappers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core wrappers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom wrappers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important conventions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Important conventions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-field-names-become-lowercase-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Field names become lowercase attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-bus-indices-are-0-based-inside-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. BUS indices are 0-based inside Grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cbus-maps-sheet-rows-to-buses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Cbus maps sheet rows to buses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-usage-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended usage pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="grid-and-data-access">Grid And Data Access<a class="headerlink" href="#grid-and-data-access" title="Permanent link">&para;</a></h1>
+<p>This guide explains what becomes available after you instantiate
+<a href="https://github.com/xuwkk/gridforge/blob/main/gridforge/opt.py"><code>Grid</code></a>, how
+<code>Data(...)</code> lines up time series with workbook rows, and how to retrieve entries
+when building your own optimization model.</p>
+<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">gridforge.opt</span><span class="w"> </span><span class="kn">import</span> <span class="n">Grid</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="n">Grid</span><span class="p">(</span><span class="s2">&quot;14bus_config.xlsx&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div>
+<p>After this, the main access layers are:</p>
+<ul>
+<li><code>grid.sheets[...]</code>: raw Excel tables as pandas DataFrames</li>
+<li><code>grid.core.*</code>: schema-defined core sheets with derived network objects</li>
+<li><code>grid.custom[...]</code>: custom sheets attached to buses, such as <code>load</code>, <code>solar</code>,
+  and <code>wind</code></li>
+<li>top-level aliases such as <code>grid.gen</code>, <code>grid.branch</code>, <code>grid.load</code>, and
+  <code>grid.solar</code> when names are safe Python attributes</li>
+</ul>
+<h2 id="top-level-entries">Top-level entries<a class="headerlink" href="#top-level-entries" title="Permanent link">&para;</a></h2>
+<p><code>Grid(...)</code> defines these top-level entries:</p>
+<ul>
+<li><code>grid.baseMVA</code>: system base power used for per-unit scaling in optimization code</li>
+<li><code>grid.nbus</code>: number of buses in the case; same as <code>grid.bus.n</code></li>
+<li><code>grid.ngen</code>: number of generator rows in the <code>gen</code> sheet; same as
+  <code>grid.gen.n</code></li>
+<li><code>grid.nbranch</code>: number of branch rows in the <code>branch</code> sheet; same as
+  <code>grid.branch.n</code></li>
+<li><code>grid.sheets</code>: raw Excel workbook tables as DataFrames</li>
+<li><code>grid.core</code>: schema-defined core sheet wrappers</li>
+<li><code>grid.custom</code>: generic wrappers for custom sheets attached to buses</li>
+<li><code>grid.aliases</code>: convenience aliases registered at the top level</li>
+<li><code>grid.metadata</code>: workbook metadata such as <code>baseMVA</code> and base case name</li>
+</ul>
+<p>It also provides small discovery helpers:</p>
+<ul>
+<li><code>grid.sheet_names()</code>: list all sheet names loaded from the Excel workbook</li>
+<li><code>grid.core_names()</code>: list the available core sheet wrappers</li>
+<li><code>grid.custom_names()</code>: list the available custom sheets attached to buses</li>
+<li><code>grid.alias_names()</code>: list top-level aliases such as <code>gen</code>, <code>branch</code>, <code>load</code></li>
+<li><code>grid.sheet(name)</code>: fetch one raw sheet as a DataFrame</li>
+<li><code>grid.core_sheet(name)</code>: fetch one core wrapper by name</li>
+<li><code>grid.custom_sheet(name)</code>: fetch one custom wrapper by name</li>
+<li><code>grid.has_core(name)</code>: check whether a core wrapper exists</li>
+<li><code>grid.has_custom(name)</code>: check whether a custom wrapper exists</li>
+</ul>
+<h2 id="1-raw-tables-gridsheets">1. Raw tables: <code>grid.sheets[...]</code><a class="headerlink" href="#1-raw-tables-gridsheets" title="Permanent link">&para;</a></h2>
+<p>Use <code>grid.sheets[...]</code> when you want the original Excel sheet as a DataFrame.</p>
+<p>Examples:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">sheets</span><span class="p">[</span><span class="s2">&quot;bus&quot;</span><span class="p">]</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">sheets</span><span class="p">[</span><span class="s2">&quot;gen&quot;</span><span class="p">]</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">sheets</span><span class="p">[</span><span class="s2">&quot;solar&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p>or equivalently:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">sheet</span><span class="p">(</span><span class="s2">&quot;bus&quot;</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">sheet</span><span class="p">(</span><span class="s2">&quot;solar&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="2-core-sheets-gridcore">2. Core sheets: <code>grid.core.*</code><a class="headerlink" href="#2-core-sheets-gridcore" title="Permanent link">&para;</a></h2>
+<p><code>grid.core</code> contains the schema-defined sheets:</p>
+<ul>
+<li><code>grid.core.bus</code></li>
+<li><code>grid.core.gen</code></li>
+<li><code>grid.core.branch</code></li>
+</ul>
+<p>These are wrapper objects, not raw DataFrames. Each wrapper stores:</p>
+<ul>
+<li><code>name</code></li>
+<li><code>table</code></li>
+<li><code>n</code></li>
+<li>field arrays in lowercase names</li>
+</ul>
+<p>You can access fields in two equivalent ways:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">pmax</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;PMAX&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="gridcorebus"><code>grid.core.bus</code><a class="headerlink" href="#gridcorebus" title="Permanent link">&para;</a></h3>
+<p>Main entries:</p>
+<ul>
+<li><code>grid.core.bus.table</code>: raw <code>bus</code> DataFrame</li>
+<li><code>grid.core.bus.n</code>: number of bus rows</li>
+<li><code>grid.core.bus.bus_idx</code>: 0-based bus indices</li>
+<li><code>grid.core.bus.slack_bus_idx</code>: the unique slack bus index</li>
+<li><code>grid.core.bus.non_slack_bus_idx</code>: all non-slack bus indices</li>
+<li><code>grid.core.bus.ref_theta</code>: reference angle of the slack bus in radians</li>
+</ul>
+<p>Plus lowercased raw columns such as:</p>
+<ul>
+<li><code>grid.core.bus.bus_type</code>: bus type array from the workbook</li>
+<li><code>grid.core.bus.pd</code>: active power demand at each bus</li>
+<li><code>grid.core.bus.qd</code>: reactive power demand at each bus</li>
+<li><code>grid.core.bus.gs</code>: shunt conductance values</li>
+<li><code>grid.core.bus.bs</code>: shunt susceptance values</li>
+</ul>
+<p>Typical uses:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">slack_bus_idx</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">pd</span>
+</code></pre></div>
+<h3 id="gridcoregen"><code>grid.core.gen</code><a class="headerlink" href="#gridcoregen" title="Permanent link">&para;</a></h3>
+<p><code>grid.core.gen</code> is the generator sheet wrapped as an object attached to buses.</p>
+<p>Main entries:</p>
+<ul>
+<li><code>grid.core.gen.table</code>: raw <code>gen</code> DataFrame</li>
+<li><code>grid.core.gen.n</code>: number of generator rows</li>
+<li><code>grid.core.gen.bus_idx</code>: 0-based bus assignment for each generator row</li>
+<li><code>grid.core.gen.Cbus</code>: bus-to-generator incidence matrix</li>
+</ul>
+<p>Plus lowercased raw columns such as:</p>
+<ul>
+<li><code>grid.core.gen.status</code>: generator on/off availability status</li>
+<li><code>grid.core.gen.pmax</code>: maximum active power output</li>
+<li><code>grid.core.gen.pmin</code>: minimum active power output</li>
+<li><code>grid.core.gen.pg</code>: active power setpoint from the workbook</li>
+<li><code>grid.core.gen.qmax</code>: maximum reactive power output</li>
+<li><code>grid.core.gen.cost_startup</code>: startup cost coefficient</li>
+<li><code>grid.core.gen.cost_shutdown</code>: shutdown cost coefficient</li>
+<li><code>grid.core.gen.cost_second</code>: quadratic cost coefficient</li>
+<li><code>grid.core.gen.cost_first</code>: linear cost coefficient</li>
+<li><code>grid.core.gen.cost_zero</code>: fixed no-load cost coefficient</li>
+</ul>
+<p>Typical uses:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">pmax</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">cost_first</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">bus_idx</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">Cbus</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">active_mask</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="gridcorebranch"><code>grid.core.branch</code><a class="headerlink" href="#gridcorebranch" title="Permanent link">&para;</a></h3>
+<p><code>grid.core.branch</code> contains both raw branch columns and derived DC-power-flow
+objects.</p>
+<p>Main entries:</p>
+<ul>
+<li><code>grid.core.branch.table</code>: raw <code>branch</code> DataFrame</li>
+<li><code>grid.core.branch.n</code>: number of branch rows</li>
+<li><code>grid.core.branch.pmax</code>: branch thermal limit taken from <code>RATE_A</code></li>
+<li><code>grid.core.branch.Cf</code>: from-bus incidence matrix</li>
+<li><code>grid.core.branch.Ct</code>: to-bus incidence matrix</li>
+<li><code>grid.core.branch.A</code>: signed branch-bus incidence matrix</li>
+<li><code>grid.core.branch.Bf</code>: branch susceptance matrix</li>
+<li><code>grid.core.branch.Bbus</code>: bus susceptance matrix</li>
+<li><code>grid.core.branch.Pfshift</code>: branch flow shift from transformer phase shift</li>
+<li><code>grid.core.branch.Pbusshift</code>: bus-level equivalent of <code>Pfshift</code></li>
+<li><code>grid.core.branch.ptdf</code>: PTDF matrix for DC power flow mapping</li>
+</ul>
+<p>Plus lowercased raw columns such as:</p>
+<ul>
+<li><code>grid.core.branch.f_bus_idx</code>: from-bus indices from the workbook</li>
+<li><code>grid.core.branch.t_bus_idx</code>: to-bus indices from the workbook</li>
+<li><code>grid.core.branch.br_x</code>: series reactance values</li>
+<li><code>grid.core.branch.rate_a</code>: original branch rating column</li>
+</ul>
+<p>Typical uses:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">branch</span><span class="o">.</span><span class="n">ptdf</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">branch</span><span class="o">.</span><span class="n">pmax</span>
+</code></pre></div>
+<h2 id="3-custom-sheets-attached-to-buses-gridcustom">3. Custom Sheets Attached To Buses: <code>grid.custom[...]</code><a class="headerlink" href="#3-custom-sheets-attached-to-buses-gridcustom" title="Permanent link">&para;</a></h2>
+<p>Every non-core sheet is required to define <code>BUS_IDX</code> and becomes a generic
+custom wrapper under <code>grid.custom[...]</code>.</p>
+<p>Examples:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;load&quot;</span><span class="p">]</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;solar&quot;</span><span class="p">]</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;wind&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p>or equivalently:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">custom_sheet</span><span class="p">(</span><span class="s2">&quot;load&quot;</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom_sheet</span><span class="p">(</span><span class="s2">&quot;solar&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Each custom sheet wrapper defines:</p>
+<ul>
+<li><code>name</code>: sheet name as stored in the workbook</li>
+<li><code>table</code>: raw DataFrame for that custom sheet</li>
+<li><code>n</code>: number of rows in the custom sheet</li>
+<li><code>bus_idx</code>: 0-based bus assignment for each custom-sheet row</li>
+<li><code>Cbus</code>: bus-to-custom-sheet incidence matrix</li>
+</ul>
+<p>Plus lowercased raw columns from that sheet, except <code>BUS_IDX</code>.</p>
+<p>For example, if the <code>solar</code> sheet contains <code>PMAX</code>, <code>STATUS</code>, and
+<code>CURTAIL_COST</code>, then you can access:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;solar&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pmax</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;solar&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">status</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;solar&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">curtail_cost</span>
+</code></pre></div>
+<p>Typical uses:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;load&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">Cbus</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;load&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shed_cost</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;solar&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pmax</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;wind&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">active_rows</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="4-convenience-aliases-gridsheet">4. Convenience aliases: <code>grid.&lt;sheet&gt;</code><a class="headerlink" href="#4-convenience-aliases-gridsheet" title="Permanent link">&para;</a></h2>
+<p><code>Grid(...)</code> also registers safe top-level aliases:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">bus</span>      <span class="c1"># same object as grid.core.bus</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">gen</span>      <span class="c1"># same object as grid.core.gen</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">branch</span>   <span class="c1"># same object as grid.core.branch</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">load</span>     <span class="c1"># same object as grid.custom[&quot;load&quot;]</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">solar</span>    <span class="c1"># same object as grid.custom[&quot;solar&quot;]</span>
+</code></pre></div>
+<p>Aliases are added only when the sheet name is a valid Python identifier and does
+not collide with an existing <code>Grid</code> attribute or method. Explicit access through
+<code>grid.core.*</code> and <code>grid.custom[...]</code> remains the clearest form for shared code.</p>
+<h2 id="5-time-series-data-data">5. Time-series data: <code>Data(...)</code><a class="headerlink" href="#5-time-series-data-data" title="Permanent link">&para;</a></h2>
+<p><code>Data(...)</code> loads case-specific <code>bus_&lt;BUS_IDX&gt;.csv</code> files created by
+<code>materialize_bus_data_assignment(...)</code>. It uses the workbook to decide which
+bus files to open and in what order sheet-backed profile columns should appear.
+The full bus CSV files remain available for contextual data access.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">gridforge.opt</span><span class="w"> </span><span class="kn">import</span> <span class="n">Data</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">Data</span><span class="p">(</span>
+    <span class="n">grid_xlsx_path</span><span class="o">=</span><span class="s2">&quot;14bus_config.xlsx&quot;</span><span class="p">,</span>
+    <span class="n">data_dir</span><span class="o">=</span><span class="s2">&quot;14bus_data&quot;</span><span class="p">,</span>
+    <span class="n">sheet_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;load&quot;</span><span class="p">,</span> <span class="s2">&quot;solar&quot;</span><span class="p">,</span> <span class="s2">&quot;wind&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>For each requested sheet, <code>Data(...)</code>:</p>
+<ol>
+<li>reads that sheet's <code>BUS_IDX</code> values from the Excel workbook,</li>
+<li>opens the corresponding <code>bus_&lt;BUS_IDX&gt;.csv</code> files,</li>
+<li>extracts the column whose name matches the sheet name case-insensitively,</li>
+<li>stacks those columns in the same row order as the Excel sheet.</li>
+</ol>
+<p>Sheet-backed profile examples:</p>
+<div class="highlight"><pre><span></span><code><span class="n">data</span><span class="o">.</span><span class="n">get_series</span><span class="p">(</span><span class="s2">&quot;load&quot;</span><span class="p">)</span>   <span class="c1"># shape: (T, n_load_rows)</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_series</span><span class="p">(</span><span class="s2">&quot;solar&quot;</span><span class="p">)</span>  <span class="c1"># shape: (T, n_solar_rows)</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_bus_idx</span><span class="p">(</span><span class="s2">&quot;load&quot;</span><span class="p">)</span>  <span class="c1"># generated BUS_IDX values for load rows</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_n</span><span class="p">(</span><span class="s2">&quot;wind&quot;</span><span class="p">)</span>        <span class="c1"># number of wind rows</span>
+</code></pre></div>
+<h3 id="get_series-vs-get_column"><code>get_series(...)</code> vs <code>get_column(...)</code><a class="headerlink" href="#get_series-vs-get_column" title="Permanent link">&para;</a></h3>
+<p>Use <code>get_column(...)</code> when you want a column from the materialized bus CSV
+files. This is the general bus-level access method and works for both signal
+columns and context columns:</p>
+<div class="highlight"><pre><span></span><code><span class="n">data</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s2">&quot;load&quot;</span><span class="p">)</span>             <span class="c1"># load column from each loaded bus CSV</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s2">&quot;Temperature (k)&quot;</span><span class="p">)</span>  <span class="c1"># weather/context column</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s2">&quot;Hour_sin&quot;</span><span class="p">)</span>         <span class="c1"># calendar/context column</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s2">&quot;load&quot;</span><span class="p">,</span> <span class="n">bus_idx</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">14</span><span class="p">])</span>
+</code></pre></div>
+<p>The columns of <code>get_column(...)</code> follow the selected generated <code>BUS_IDX</code> values
+(or all loaded bus IDs if <code>bus_idx</code> is omitted).</p>
+<p>Use <code>get_series(...)</code> when you need a time-series matrix aligned to a workbook
+asset sheet. For example, <code>data.get_series("load")[:, i]</code> matches row <code>i</code> of
+<code>grid.load</code>, so it is the safer form when multiplying by <code>grid.load.Cbus</code> in an
+optimization model.</p>
+<p>In short:</p>
+<div class="highlight"><pre><span></span><code><span class="n">data</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s2">&quot;load&quot;</span><span class="p">)</span>   <span class="c1"># bus-ordered CSV data</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_series</span><span class="p">(</span><span class="s2">&quot;load&quot;</span><span class="p">)</span>   <span class="c1"># load-sheet-row-ordered optimization data</span>
+</code></pre></div>
+<p>For full per-bus files and contextual columns:</p>
+<div class="highlight"><pre><span></span><code><span class="n">data</span><span class="o">.</span><span class="n">bus_ids</span><span class="p">()</span>                         <span class="c1"># loaded bus CSV IDs</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_bus_frame</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>                  <span class="c1"># full bus_2.csv DataFrame</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s2">&quot;Temperature (k)&quot;</span><span class="p">)</span>     <span class="c1"># shape: (T, n_loaded_buses)</span>
+<span class="n">data</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s2">&quot;Weekday_sin&quot;</span><span class="p">,</span> <span class="n">bus_idx</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</code></pre></div>
+<p><code>get_column(...)</code> is for numeric columns. Use <code>get_bus_frame(...)</code> when you need
+the original DataFrame, including non-numeric context columns.</p>
+<h2 id="helper-methods-on-wrappers">Helper methods on wrappers<a class="headerlink" href="#helper-methods-on-wrappers" title="Permanent link">&para;</a></h2>
+<p>Both <code>grid.core.*</code> wrappers and <code>grid.custom[...]</code> wrappers support field
+discovery helpers.</p>
+<h3 id="core-wrappers">Core wrappers<a class="headerlink" href="#core-wrappers" title="Permanent link">&para;</a></h3>
+<p>Supported methods:</p>
+<ul>
+<li><code>.field(name)</code>: get one field by its original column name</li>
+<li><code>.field_names()</code>: list the exposed field names on the wrapper</li>
+<li><code>.has_field(name)</code>: check whether a field exists</li>
+</ul>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">branch</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;RATE_A&quot;</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">field_names</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="custom-wrappers">Custom wrappers<a class="headerlink" href="#custom-wrappers" title="Permanent link">&para;</a></h3>
+<p>Supported methods:</p>
+<ul>
+<li><code>.field(name)</code>: get one field by its original column name</li>
+<li><code>.field_names()</code>: list the exposed field names on the wrapper</li>
+<li><code>.has_field(name)</code>: check whether a field exists</li>
+<li><code>.active_mask()</code>: boolean mask based on <code>STATUS &gt; 0</code> when available</li>
+<li><code>.active_rows()</code>: row indices corresponding to the active mask</li>
+</ul>
+<p>If a sheet has a <code>STATUS</code> column, <code>active_mask()</code> returns <code>True</code> for rows where
+<code>STATUS &gt; 0</code>. If the sheet has no <code>STATUS</code> column, all rows are treated as
+active.</p>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="n">solar</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">custom</span><span class="p">[</span><span class="s2">&quot;solar&quot;</span><span class="p">]</span>
+<span class="n">solar</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;PMAX&quot;</span><span class="p">)</span>
+<span class="n">active_mask</span> <span class="o">=</span> <span class="n">solar</span><span class="o">.</span><span class="n">active_mask</span><span class="p">()</span>
+<span class="n">active_rows</span> <span class="o">=</span> <span class="n">solar</span><span class="o">.</span><span class="n">active_rows</span><span class="p">()</span>
+<span class="n">active_pmax</span> <span class="o">=</span> <span class="n">solar</span><span class="o">.</span><span class="n">pmax</span><span class="p">[</span><span class="n">active_mask</span><span class="p">]</span>
+</code></pre></div>
+<h2 id="important-conventions">Important conventions<a class="headerlink" href="#important-conventions" title="Permanent link">&para;</a></h2>
+<h3 id="1-field-names-become-lowercase-attributes">1. Field names become lowercase attributes<a class="headerlink" href="#1-field-names-become-lowercase-attributes" title="Permanent link">&para;</a></h3>
+<p>Raw Excel columns are exposed as lowercase attribute names on wrappers.</p>
+<p>Examples:</p>
+<ul>
+<li><code>PMAX</code> -&gt; <code>.pmax</code></li>
+<li><code>COST_FIRST</code> -&gt; <code>.cost_first</code></li>
+<li><code>SHED_COST</code> -&gt; <code>.shed_cost</code></li>
+<li><code>F_BUS_IDX</code> -&gt; <code>.f_bus_idx</code></li>
+</ul>
+<p>If you are unsure, use <code>.field("ORIGINAL_NAME")</code>.</p>
+<h3 id="2-bus-indices-are-0-based-inside-grid">2. BUS indices are 0-based inside <code>Grid</code><a class="headerlink" href="#2-bus-indices-are-0-based-inside-grid" title="Permanent link">&para;</a></h3>
+<p>The generated Excel uses 1-based <code>BUS_IDX</code>, but <code>Grid</code> converts internal bus
+indices to 0-based arrays where appropriate.</p>
+<p>Examples:</p>
+<ul>
+<li><code>grid.core.bus.bus_idx</code></li>
+<li><code>grid.core.gen.bus_idx</code></li>
+<li><code>grid.custom["load"].bus_idx</code></li>
+<li><code>grid.load.bus_idx</code></li>
+</ul>
+<h3 id="3-cbus-maps-sheet-rows-to-buses">3. <code>Cbus</code> maps sheet rows to buses<a class="headerlink" href="#3-cbus-maps-sheet-rows-to-buses" title="Permanent link">&para;</a></h3>
+<p>For sheets attached to buses, <code>Cbus</code> has shape <code>(nbus, n_component_rows)</code> and
+places a 1 at the bus corresponding to each row.</p>
+<p>This is useful when mapping component-level variables to bus injections:</p>
+<div class="highlight"><pre><span></span><code><span class="n">inj</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">grid</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">Cbus</span> <span class="o">@</span> <span class="n">pg</span>
+    <span class="o">+</span> <span class="n">grid</span><span class="o">.</span><span class="n">solar</span><span class="o">.</span><span class="n">Cbus</span> <span class="o">@</span> <span class="n">ps</span>
+    <span class="o">-</span> <span class="n">grid</span><span class="o">.</span><span class="n">load</span><span class="o">.</span><span class="n">Cbus</span> <span class="o">@</span> <span class="n">pl</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="recommended-usage-pattern">Recommended usage pattern<a class="headerlink" href="#recommended-usage-pattern" title="Permanent link">&para;</a></h2>
+<p>Use:</p>
+<ul>
+<li><code>grid.sheets[...]</code> for raw inspection</li>
+<li><code>grid.core.*</code> for network-defined sheets</li>
+<li><code>grid.custom[...]</code> for user-defined assets attached to buses</li>
+<li><code>grid.&lt;sheet&gt;</code> aliases for concise notebook/model code</li>
+</ul>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="n">gen</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">gen</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">branch</span>
+<span class="n">load</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">load</span>
+<span class="n">solar</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">solar</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">gen</span><span class="o">.</span><span class="n">pmax</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">branch</span><span class="o">.</span><span class="n">ptdf</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">load</span><span class="o">.</span><span class="n">Cbus</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">solar</span><span class="o">.</span><span class="n">field_names</span><span class="p">())</span>
+</code></pre></div>
+<h2 id="caveats">Caveats<a class="headerlink" href="#caveats" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Every custom sheet is attached to buses through <code>BUS_IDX</code> and appears in
+  <code>grid.custom[...]</code>.</li>
+<li>Top-level aliases are conveniences, not a replacement for <code>grid.core</code> and
+  <code>grid.custom</code>.</li>
+<li>PYPOWER/MATPOWER <code>gencost</code> rows are merged into <code>gen</code> as <code>COST_*</code> columns
+  before the workbook is written.</li>
+<li>Time-series data is loaded only for sheets requested in <code>Data(...,
+  sheet_names=[...])</code>; static custom sheets do not need CSV data.</li>
+</ul>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p>After <code>Grid(...)</code> is instantiated, use:</p>
+<ul>
+<li><code>grid.sheets[...]</code> for raw tables,</li>
+<li><code>grid.core.*</code> for built-in network objects,</li>
+<li><code>grid.custom[...]</code> for custom assets attached to buses,</li>
+<li><code>Data(...)</code> for aligned time-series matrices.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
