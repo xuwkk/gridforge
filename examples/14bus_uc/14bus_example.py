@@ -315,14 +315,13 @@ def rescale_line_limit(data: Data, grid: Grid, T: int,
     pf_values = np.concatenate(np.abs(pf_values), axis=0)
     pf_max = np.clip(np.max(pf_values,axis=0) * np.random.uniform(0.9, 1.1, size=grid.nbranch), 0.1, None) * grid.baseMVA
     
-    # Persist the tuned branch limit to both the generated Excel case and the
-    # YAML source of truth. The YAML rewrite is explicit here because we want
-    # the tuned RATE_A values to become a concrete absolute rule.
+    # Persist the tuned branch limit to the generated Excel case and a resolved
+    # YAML config. The original YAML remains unchanged.
     update_grid_excel(
         grid_config_path,
         {"branch": {"RATE_A": pf_max}},
     )
-    update_grid_yaml_absolute_column(
+    resolved_config_yaml_path = update_grid_yaml_absolute_column(
         config_yaml_path,
         "branch",
         "RATE_A",
@@ -330,7 +329,7 @@ def rescale_line_limit(data: Data, grid: Grid, T: int,
     )
 
     print(f"Updated the line limit in {grid_config_path}")
-    print(f"Updated the RATE_A rule in {config_yaml_path}")
+    print(f"Saved the resolved RATE_A rule to {resolved_config_yaml_path}")
     
 if __name__ == "__main__":
     

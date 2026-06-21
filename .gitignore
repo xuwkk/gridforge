@@ -18,3 +18,5 @@ examples/14bus_uc/*.html
 examples/14bus_uc/14bus_data_assignment_resolved.yaml
 .DS_Store
 .codex
+.publish-venv/
+dist/

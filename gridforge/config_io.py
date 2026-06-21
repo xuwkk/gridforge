@@ -4,6 +4,7 @@ Helpers for reading and updating GridForge configuration artifacts.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, Mapping
 
 import numpy as np
@@ -66,14 +67,27 @@ def update_grid_yaml_absolute_column(
     sheet_name: str,
     column_name: str,
     values: Any,
-) -> None:
+    output_yaml_path: str | None = None,
+) -> str:
     """
-    Overwrite one YAML grid rule as an absolute column assignment in place.
+    Write a new YAML config with one rule replaced by an absolute assignment.
 
     This is useful when a post-processing step produces concrete values that
-    should become the new source-of-truth configuration.
+    should become a resolved configuration without modifying the input YAML.
+    When ``output_yaml_path`` is omitted, ``_resolved`` is added before the
+    input file extension.
     """
-    with open(config_yaml_path, "r") as f:
+    input_path = Path(config_yaml_path)
+    if output_yaml_path is None:
+        suffix = input_path.suffix or ".yaml"
+        output_path = input_path.with_name(f"{input_path.stem}_resolved{suffix}")
+    else:
+        output_path = Path(output_yaml_path)
+
+    if input_path.expanduser().resolve() == output_path.expanduser().resolve():
+        raise ValueError("Output YAML path must differ from the input YAML path.")
+
+    with input_path.open("r") as f:
         cfg = yaml.safe_load(f)
 
     if not isinstance(cfg, dict):
@@ -98,5 +112,7 @@ def update_grid_yaml_absolute_column(
         "value": normalized_values,
     }
 
-    with open(config_yaml_path, "w") as f:
+    with output_path.open("w") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
+
+    return str(output_path)
