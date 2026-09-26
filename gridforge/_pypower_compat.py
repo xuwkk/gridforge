@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 
 
-def patch_numpy_for_pypower():
-    """Restore NumPy symbols imported by PYPOWER but removed in NumPy 2.x."""
+def _patch_numpy_for_pypower() -> None:
+    """Restore old NumPy names before importing PYPOWER (idempotent)."""
     if not hasattr(np, "asscalar"):
         np.asscalar = lambda a: a.item()
 
@@ -31,5 +31,3 @@ def patch_numpy_for_pypower():
             return np.asarray(result).ravel()
 
         np.in1d = _in1d
-
-    return np

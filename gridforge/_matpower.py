@@ -1,9 +1,16 @@
+"""Small parser for literal MATPOWER ``mpc.field = ...;`` case files.
+
+This module deliberately does not interpret MATLAB expressions or run code.
+It only recognizes numbers, quoted strings, matrices, and simple cell arrays.
+"""
+
 from __future__ import annotations
 
-import math
-import pathlib
+from pathlib import Path
 import re
 from typing import Any
+
+import numpy as np
 
 
 _NUM_RE = re.compile(
@@ -11,69 +18,19 @@ _NUM_RE = re.compile(
 )
 
 
-def convert_matpower_to_pypower(
-    matpower_path: str | pathlib.Path,
-    output_path: str | pathlib.Path | None = None,
-    function_name: str | None = None,
-    regularize_bus_indices: bool = False,
-) -> str:
+def _read_matpower_case(matpower_path: Path) -> dict[str, Any]:
+    """Read literal ``mpc.field = value;`` assignments from a MATPOWER file.
+
+    This is intentionally a small literal parser, not a MATLAB interpreter.
+    Files that calculate fields with MATLAB expressions need MATLAB/Octave's
+    ``loadcase()`` before GridForge can load their resulting data.
     """
-    Convert a MATPOWER .m case file into a PYPOWER-style .py case file.
-
-    Parameters
-    ----------
-    matpower_path : str | Path
-        Path to MATPOWER case file, e.g. "case1197.m".
-    output_path : str | Path | None
-        Path to output PYPOWER file, e.g. "case1197.py".
-        If None, the function only returns the generated Python source.
-    function_name : str | None
-        Name of the Python case function. If None, inferred from the MATPOWER
-        function name, e.g. `case1197`.
-    regularize_bus_indices : bool
-        If True, remap bus numbers to dense indices 1..N in bus-row order and
-        update all known bus-reference fields accordingly.
-
-    Returns
-    -------
-    str
-        Generated PYPOWER Python source code.
-
-    Notes
-    -----
-    This handles the common MATPOWER v2 pattern:
-        mpc.version = '2';
-        mpc.baseMVA = ...;
-        mpc.bus = [ ... ];
-        mpc.gen = [ ... ];
-        mpc.branch = [ ... ];
-        mpc.gencost = [ ... ];
-
-    It also preserves extra literal fields such as areas, bus_name, gentype, etc.
-
-    It does NOT execute arbitrary MATLAB code. So if the .m file builds arrays
-    through helper functions or non-literal expressions, use Octave/MATLAB
-    `loadcase()` first and then serialize from the loaded structure.
-    """
-    matpower_path = pathlib.Path(matpower_path)
     text = matpower_path.read_text(encoding="utf-8")
     clean = _strip_matlab_comments(text)
-
-    if function_name is None:
-        m = re.search(r"\bfunction\s+\w+\s*=\s*(\w+)\b", clean)
-        function_name = m.group(1) if m else matpower_path.stem
-
     assignments = _parse_assignments(clean)
-    case = {k: _parse_expr(v) for k, v in assignments.items()}
-    if regularize_bus_indices:
-        _regularize_bus_indices(case)
-    py_code = _generate_pypower_case(case, function_name)
-
-    if output_path is not None:
-        output_path = pathlib.Path(output_path)
-        output_path.write_text(py_code, encoding="utf-8")
-
-    return py_code
+    case = {name: _parse_expr(expr) for name, expr in assignments.items()}
+    case["version"] = str(case.get("version", "2"))
+    return case
 
 
 def _strip_matlab_comments(text: str) -> str:
@@ -112,11 +69,7 @@ def _strip_matlab_comments(text: str) -> str:
 
 
 def _parse_assignments(text: str) -> dict[str, str]:
-    """
-    Extract assignments of the form:
-        mpc.field = ...;
-    using top-level semicolon matching.
-    """
+    """Find assignments, ignoring semicolons inside arrays and strings."""
     assignments: dict[str, str] = {}
     i = 0
     n = len(text)
@@ -175,7 +128,8 @@ def _parse_expr(expr: str) -> Any:
     expr = expr.strip()
 
     if expr.startswith("[") and expr.endswith("]"):
-        return _parse_matrix(expr)
+        # PYPOWER case matrices are NumPy arrays; preserve that representation.
+        return np.asarray(_parse_matrix(expr))
 
     if expr.startswith("{") and expr.endswith("}"):
         return _parse_cell_array(expr)
@@ -186,7 +140,7 @@ def _parse_expr(expr: str) -> Any:
     if _is_number(expr):
         return _parse_number(expr)
 
-    # Fallback: keep raw MATLAB expression as a string
+    # Unsupported expressions remain text; GridForge never evaluates MATLAB.
     return expr
 
 
@@ -200,6 +154,8 @@ def _parse_matrix(expr: str) -> list[list[Any]]:
     row_tokens: list[str] = []
     token: list[str] = []
 
+    # Whitespace separates values, while semicolons/newlines separate rows;
+    # delimiters inside nested expressions or quoted strings are not splits.
     depth_round = 0
     depth_square = 0
     depth_curly = 0
@@ -351,123 +307,6 @@ def _parse_number(tok: str) -> int | float:
         return float("nan")
 
     val = float(tok)
-    if math.isfinite(val) and val.is_integer():
+    if np.isfinite(val) and val.is_integer():
         return int(val)
     return val
-
-
-def _as_int_if_numeric(x: Any) -> int | None:
-    if isinstance(x, bool):
-        return None
-    if isinstance(x, int):
-        return x
-    if isinstance(x, float):
-        if math.isfinite(x) and x.is_integer():
-            return int(x)
-        return None
-    return None
-
-
-def _remap_matrix_columns(
-    rows: Any, columns: tuple[int, ...], bus_id_map: dict[int, int]
-) -> None:
-    if not (isinstance(rows, list) and rows and isinstance(rows[0], list)):
-        return
-
-    for row in rows:
-        for col in columns:
-            if col >= len(row):
-                continue
-            old_id = _as_int_if_numeric(row[col])
-            if old_id is None:
-                continue
-            new_id = bus_id_map.get(old_id)
-            if new_id is not None:
-                row[col] = new_id
-
-
-def _regularize_bus_indices(case: dict[str, Any]) -> None:
-    bus_rows = case.get("bus")
-    if not (isinstance(bus_rows, list) and bus_rows and isinstance(bus_rows[0], list)):
-        return
-
-    bus_id_map: dict[int, int] = {}
-    next_id = 1
-
-    for row in bus_rows:
-        if not row:
-            continue
-        old_id = _as_int_if_numeric(row[0])
-        if old_id is None:
-            continue
-        if old_id not in bus_id_map:
-            bus_id_map[old_id] = next_id
-            next_id += 1
-        row[0] = bus_id_map[old_id]
-
-    # Known MATPOWER/PYPOWER fields containing bus references.
-    _remap_matrix_columns(case.get("gen"), (0,), bus_id_map)
-    _remap_matrix_columns(case.get("branch"), (0, 1), bus_id_map)
-    _remap_matrix_columns(case.get("areas"), (1,), bus_id_map)
-    _remap_matrix_columns(case.get("dcline"), (0, 1), bus_id_map)
-
-
-def _py_repr(x: Any) -> str:
-    if isinstance(x, float):
-        if math.isnan(x):
-            return 'float("nan")'
-        if math.isinf(x):
-            return 'float("inf")' if x > 0 else '-float("inf")'
-        return repr(float(x))
-    return repr(x)
-
-
-def _format_matrix(rows: list[list[Any]], indent: str = "        ") -> str:
-    lines = ["array(["]
-    for row in rows:
-        row_items = ", ".join(_py_repr(item) for item in row)
-        lines.append(f"{indent}[{row_items}],")
-    lines.append("])")
-    return "\n".join(lines)
-
-
-def _generate_pypower_case(case: dict[str, Any], function_name: str) -> str:
-    """
-    Emit a PYPOWER case file as Python source.
-    """
-    preferred_order = ["version", "baseMVA", "bus", "gen", "branch", "gencost", "areas"]
-
-    lines: list[str] = [
-        "from numpy import array",
-        "",
-        f"def {function_name}():",
-        '    """Auto-converted from a MATPOWER case file."""',
-        "",
-        "    ppc = {}",
-    ]
-
-    version = str(case.get("version", "2"))
-    lines.append(f"    ppc['version'] = {_py_repr(version)}")
-    lines.append("")
-
-    for key in preferred_order:
-        if key == "version" or key not in case:
-            continue
-        _append_field(lines, key, case[key])
-
-    for key, value in case.items():
-        if key in preferred_order:
-            continue
-        _append_field(lines, key, value)
-
-    lines.append("    return ppc")
-    lines.append("")
-    return "\n".join(lines)
-
-
-def _append_field(lines: list[str], key: str, value: Any) -> None:
-    if isinstance(value, list) and (not value or isinstance(value[0], list)):
-        lines.append(f"    ppc[{key!r}] = {_format_matrix(value)}")
-    else:
-        lines.append(f"    ppc[{key!r}] = {_py_repr(value)}")
-    lines.append("")
