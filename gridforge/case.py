@@ -24,7 +24,7 @@ _PYPOWER_TABLE_ORDER = ("bus", "gen", "branch", "gencost")
 
 
 class Case:
-    """A named-DataFrame view of standard PYPOWER/MATPOWER case data.
+    """Standard network data and named custom component DataFrames.
 
     Tables returned by ``case[name]`` are mutable. Use pandas for data edits;
     GridForge handles case conversion and bus/network matrix construction.
@@ -38,19 +38,17 @@ class Case:
         tables: Mapping[str, pd.DataFrame],
         table_columns: Mapping[str, tuple[str, ...]],
         metadata: Mapping[str, Any] | None = None,
-        extras: Mapping[str, Any] | None = None,
     ) -> None:
         """Create an independent case from already normalized tables.
 
         Args:
             base_mva: System power base in MVA (PYPOWER ``baseMVA``).
             version: PYPOWER/MATPOWER case format version, normally ``"2"``.
-            tables: Named DataFrames, normally ``bus``, ``gen``, ``branch``,
-                and optionally ``gencost``. Inputs are deep-copied.
-            table_columns: Original ordered columns for every table. Core
-                column order is retained for lossless PYPOWER export.
+            tables: Standard network tables and any registered custom tables.
+                Inputs are copied with ``DataFrame.copy(deep=True)``.
+            table_columns: Original ordered columns of standard PYPOWER
+                tables only. Custom tables do not need a positional schema.
             metadata: GridForge-only provenance; not exported to PYPOWER.
-            extras: Non-core PYPOWER fields; preserved on export.
         """
         self.base_mva = float(base_mva)
         self.version = deepcopy(version)
@@ -66,10 +64,9 @@ class Case:
             str(name): tuple(columns) for name, columns in table_columns.items()
         }
         self.metadata: dict[str, Any] = deepcopy(dict(metadata or {}))
-        self.extras: dict[str, Any] = deepcopy(dict(extras or {}))
 
     def __getitem__(self, table_name: str) -> pd.DataFrame:
-        # Allow: case["table_name"] or case.table_name.
+        # Standard and registered tables use the same case["table_name"] access.
         key = str(table_name).strip()
         if key not in self._tables:
             raise KeyError(f"Case table '{key}' is not available.")
@@ -96,6 +93,53 @@ class Case:
         """Return the available table names in stored order."""
         return list(self._tables)
 
+    def add_component(self, name: str, dataframe: pd.DataFrame) -> None:
+        """Copy an existing DataFrame into this Case as a new named table.
+
+        Args:
+            name: A non-empty name without outer spaces. Existing names are not allowed.
+            dataframe: A table with at least one uniquely named string column.
+                Row/column order, index labels, and dtypes are preserved.
+                Edit the stored table through ``case[name]``.
+
+        No rows are created or merged, and no device parameters are inferred.
+        BUS_IDX is optional here; connection_matrix() checks it when requested.
+        Registered tables are included in copies and Excel exports, but are
+        not translated into standard PYPOWER generators or loads.
+
+        Raises:
+            ComponentValidationError: For an invalid/conflicting name, a
+                non-DataFrame input, or missing/invalid/duplicate column names.
+        """
+        if not isinstance(name, str) or not name or name != name.strip():
+            raise ComponentValidationError(
+                "Component names must be non-empty strings without outer spaces."
+            )
+        key = name.casefold()
+        if key in _PYPOWER_TABLE_ORDER or key in ("case_info", "history"):
+            raise ComponentValidationError(f"Component name '{name}' is reserved.")
+        if any(key == existing.casefold() for existing in self._tables):
+            raise ComponentValidationError(f"Case table '{name}' already exists.")
+        if not isinstance(dataframe, pd.DataFrame):
+            raise ComponentValidationError("add_component() requires a pandas DataFrame.")
+        if (
+            len(dataframe.columns) == 0
+            or not dataframe.columns.is_unique
+            or any(
+                not isinstance(column, str) or not column.strip()
+                for column in dataframe.columns
+            )
+        ):
+            raise ComponentValidationError(
+                f"Component '{name}' must have at least one column with "
+                "unique, non-empty string names."
+            )
+
+        # Validate first, then register once. Never overwrite an existing table.
+        # The positional export schema belongs only to standard PYPOWER tables;
+        # this already-named custom DataFrame does not enter _table_columns.
+        self._tables[name] = dataframe.copy(deep=True)
+
     def copy(self) -> Case:
         """Return a deep copy whose tables and metadata are independent."""
         return Case(
@@ -104,7 +148,6 @@ class Case:
             tables=self._tables,
             table_columns=self._table_columns,
             metadata=self.metadata,
-            extras=self.extras,
         )
 
     def connection_matrix(self, component: str | pd.DataFrame) -> np.ndarray:
@@ -141,8 +184,8 @@ class Case:
                 )
             if table_name not in self._tables:
                 raise ComponentValidationError(
-                    f"Case table '{table_name}' is not available. Pass an "
-                    "external component DataFrame directly."
+                    f"Case table '{table_name}' is not available. Add it with "
+                    "add_component(), or pass an external DataFrame directly."
                 )
             table = self._tables[table_name]
         else:
@@ -261,9 +304,10 @@ class Case:
         """Return an independent PYPOWER dictionary of the core case fields."""
         self._validate_export_structure()
 
-        ppc: dict[str, Any] = deepcopy(self.extras)
-        ppc["version"] = deepcopy(self.version)
-        ppc["baseMVA"] = float(self.base_mva)
+        ppc: dict[str, Any] = {
+            "version": deepcopy(self.version),
+            "baseMVA": float(self.base_mva),
+        }
 
         for table_name in _PYPOWER_TABLE_ORDER:
             if table_name not in self._tables:
@@ -293,13 +337,13 @@ class Case:
         """Export every Case table and supplied component DataFrame to XLSX.
 
         Each table is a separate sheet. ``case_info`` holds baseMVA, version,
-        metadata, and non-core PYPOWER fields. DataFrame indexes are omitted;
+        and provenance metadata. DataFrame indexes are omitted;
         identifier columns such as BUS_IDX are preserved. This is a readable
         snapshot, not a PYPOWER solver input or a round-trip import format.
 
-        External components remain outside the Case and must be passed in
-        ``components``. Existing files are protected unless ``overwrite`` is
-        explicitly true. Requires the optional ``powergridforge[excel]`` extra.
+        Registered components are included automatically. External DataFrames
+        must be passed in ``components``. Existing files are protected unless
+        ``overwrite`` is explicitly true. Requires ``powergridforge[excel]``.
         """
         from gridforge.excel_io import export_excel
 

@@ -14,7 +14,7 @@ class CaseValidationError(GridForgeError, ValueError):
 
 
 class ComponentValidationError(GridForgeError, ValueError):
-    """Raised when a bus-to-component connection matrix cannot be constructed."""
+    """Raised when component registration or its bus connection map is invalid."""
 
 
 class ACNetworkError(GridForgeError, ValueError):

@@ -77,10 +77,6 @@ def export_excel(
             value if isinstance(value, str) else _json_text(value, f"metadata.{key}")
         )
         info_rows.append((f"metadata.{key}", info_value))
-    for key, value in case.extras.items():
-        # These fields may be arrays or nested values, so keep them on the
-        # information sheet as JSON rather than guessing a device schema.
-        info_rows.append((f"extra.{key}", _json_text(value, f"extra.{key}")))
 
     workbook = Workbook()
     workbook.remove(workbook.active)
