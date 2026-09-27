@@ -18,9 +18,10 @@ from gridforge.errors import (
     ComponentValidationError,
     DCNetworkError,
 )
+from gridforge.schemas import OPTIONAL_TABLES, REQUIRED_TABLES
 
 
-_PYPOWER_TABLE_ORDER = ("bus", "gen", "branch", "gencost")
+_PYPOWER_TABLE_ORDER = REQUIRED_TABLES + OPTIONAL_TABLES
 
 
 class Case:
@@ -57,9 +58,9 @@ class Case:
         self._tables: dict[str, pd.DataFrame] = {
             str(name): frame.copy(deep=True) for name, frame in tables.items()
         }
-        # PYPOWER export needs the original positional schema even if pandas is edited.
-        # So check the columns in _table_columns with the columns in frame in _tables can tell 
-        # if the modified Case is still valid for PYPOWER export.
+        # Record standard columns and their PYPOWER order once at loading.
+        # Later pandas column additions/reordering do not change this schema;
+        # export selects these names and rejects missing or ambiguous columns.
         self._table_columns: dict[str, tuple[str, ...]] = {
             str(name): tuple(columns) for name, columns in table_columns.items()
         }
@@ -301,26 +302,49 @@ class Case:
         return tuple(numeric_ids.astype(int).tolist())
 
     def to_pypower(self) -> dict[str, Any]:
-        """Return an independent PYPOWER dictionary of the core case fields."""
-        self._validate_export_structure()
+        """Export current standard data without modifying this Case.
+
+        Select the standard columns recorded at loading, in their original
+        PYPOWER order (including any loaded PF/OPF result columns). Added
+        columns, registered components, and metadata are not exported.
+        Current row order is retained.
+
+        Raises:
+            CaseValidationError: For missing required tables or standard
+                columns, duplicate column names or bus IDs, or values that
+                cannot be converted to a numeric PYPOWER matrix.
+        """
+        # 1. All network tables are required, even when they have zero rows.
+        for table_name in REQUIRED_TABLES:
+            # bus, gen, and branch are required.
+            if table_name not in self._tables:
+                raise CaseValidationError(
+                    f"Case is missing required table '{table_name}'."
+                )
+
+        # 2. Export required tables plus the optional cost table, if present.
+        table_names = list(REQUIRED_TABLES)
+        if "gencost" in self._tables:
+            table_names.append("gencost")
+
+        # 3. Check columns and bus IDs before converting any table.
+        self._validate_export_structure(table_names)
 
         ppc: dict[str, Any] = {
             "version": deepcopy(self.version),
             "baseMVA": float(self.base_mva),
         }
 
-        for table_name in _PYPOWER_TABLE_ORDER:
-            if table_name not in self._tables:
-                continue
+        for table_name in table_names:
             frame = self._tables[table_name]
-            # Columns are positional in PYPOWER: a new pandas column cannot be
-            # silently inserted into a numeric case matrix.
+            # Select by name, not current column position: custom columns
+            # stay in the Case, and pandas may reorder standard columns.
             column_order = list(self._table_columns[table_name])
             try:
                 ppc[table_name] = frame.loc[:, column_order].to_numpy(
                     dtype=float, copy=True
                 )
-            except (TypeError, ValueError) as exc:
+            except (TypeError, ValueError, OverflowError) as exc:
                 raise CaseValidationError(
                     f"Case table '{table_name}' contains values that cannot be "
                     "exported as a numeric PYPOWER matrix."
@@ -349,23 +373,25 @@ class Case:
 
         return export_excel(self, path, components=components, overwrite=overwrite)
 
-    def _validate_export_structure(self) -> None:
-        """Reject edits that would shift the meaning of PYPOWER columns."""
-        for table_name in _PYPOWER_TABLE_ORDER:
-            if table_name not in self._tables:
-                continue
+    def _validate_export_structure(self, table_names: list[str]) -> None:
+        """Check columns and bus IDs for the already selected, present tables."""
+        for table_name in table_names:
             frame = self._tables[table_name]  # After modification
-            expected_columns = list(self._table_columns[table_name])  # Original columns
-            if list(frame.columns) != expected_columns:
+            if not frame.columns.is_unique:
+                duplicates = frame.columns[frame.columns.duplicated()].tolist()
                 raise CaseValidationError(
-                    f"Case table '{table_name}' columns changed from "
-                    f"{expected_columns} to {list(frame.columns)}. Structural "
-                    "core-table edits are not supported by PYPOWER export."
+                    f"Case table '{table_name}' must have unique column names; "
+                    f"duplicate names: {duplicates}."
+                )
+            expected_columns = list(self._table_columns[table_name])  # Original columns
+            missing = [column for column in expected_columns if column not in frame.columns]
+            if missing:
+                raise CaseValidationError(
+                    f"Case table '{table_name}' is missing standard PYPOWER "
+                    f"columns: {missing}. Restore their original names before export."
                 )
 
-        bus = self._tables.get("bus")
-        if bus is None:
-            raise CaseValidationError("Case is missing required table 'bus'.")
+        bus = self._tables["bus"]
         if bus["BUS_IDX"].duplicated().any():
             duplicates = bus.loc[bus["BUS_IDX"].duplicated(), "BUS_IDX"].tolist()
             raise CaseValidationError(
