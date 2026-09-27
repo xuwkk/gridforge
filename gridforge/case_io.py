@@ -20,23 +20,24 @@ from gridforge._matpower import _read_matpower_case
 from gridforge.case import Case
 from gridforge.errors import CaseLoadError
 from gridforge.schemas import (
-    MINIMUM_TABLE_WIDTHS,
-    OPTIONAL_TABLES,
+    CORE_CASE_FIELDS,
+    GENCOST_HEADER_COLUMNS,
     REQUIRED_TABLES,
+    SUPPORTED_TABLE_WIDTHS,
     columns_for_table,
 )
 
 
-def load_case(source: Case | Mapping[str, Any] | str | Path) -> Case:
-    """Load a built-in case, local case file, dictionary, or existing ``Case``.
+def load_case(source: Mapping[str, Any] | str | Path) -> Case:
+    """Load standard v2 PYPOWER/MATPOWER data into an independent ``Case``.
 
     ``source`` may be a PYPOWER case name, a local PYPOWER ``.py`` file, a
-    MATPOWER ``.m`` file, a PYPOWER dictionary, or an existing GridForge Case.
-    The returned object owns deep copies of all source data.
+    literal MATPOWER ``.m`` file, or a PYPOWER dictionary. Only ``version``,
+    ``baseMVA``, ``bus``, ``gen``, ``branch``, and optional ``gencost`` are
+    read; other top-level fields are ignored.
+    Core matrices must retain their standard positional column meanings.
+    Omitted ``version`` means v2.
     """
-    if isinstance(source, Case):
-        # Already a GridForge Case: return an independent copy, not the same object.
-        return source.copy()
 
     if isinstance(source, Mapping):
         # A PYPOWER-style dict (or other Mapping): name its core matrix columns.
@@ -78,8 +79,8 @@ def load_case(source: Case | Mapping[str, Any] | str | Path) -> Case:
 
     # Other types (for example, a DataFrame or list) are not case sources.
     raise CaseLoadError(
-        "Case source must be a case name, .py/.m path, PYPOWER mapping, "
-        f"or Case; received {type(source).__name__}."
+        "Case source must be a case name, .py/.m path, or PYPOWER mapping; "
+        f"received {type(source).__name__}."
     )
 
 
@@ -143,69 +144,92 @@ def _case_from_mapping(
     *,
     source_label: str,
 ) -> Case:
-    """Attach names to core matrices while retaining other PYPOWER fields."""
-    # Normalize a copy so callers can keep using their original PYPOWER dict.
-    ppc = deepcopy(dict(source))
+    """Copy and name only the supported core fields; ignore everything else."""
+    # Select BEFORE copying: ignored components or solver objects need not be
+    # copyable. Reading them must not make an otherwise valid core case fail.
+    ppc = {key: deepcopy(source[key]) for key in CORE_CASE_FIELDS if key in source}
+
+    version = str(ppc.get("version", "2"))
+    if version != "2":
+        raise CaseLoadError(
+            f"Case '{source_label}' uses unsupported version '{version}'; "
+            "convert it to the standard v2 format before loading."
+        )
 
     if "baseMVA" not in ppc:
         raise CaseLoadError(f"Case '{source_label}' is missing required field 'baseMVA'.")
     try:
         base_mva = float(ppc["baseMVA"])
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise CaseLoadError(
-            f"Case '{source_label}' field 'baseMVA' must be numeric."
+            f"Case '{source_label}' field 'baseMVA' must be a finite positive number."
         ) from exc
+    if not np.isfinite(base_mva) or base_mva <= 0:
+        raise CaseLoadError(
+            f"Case '{source_label}' field 'baseMVA' must be finite and positive."
+        )
 
-    tables: dict[str, pd.DataFrame] = {}
-    table_columns: dict[str, tuple[str, ...]] = {}
-    for table_name in REQUIRED_TABLES + OPTIONAL_TABLES:
-        """
-        Verify that the provided dictionary is valid.
-        """
+    # First check that every required table exists.
+    for table_name in REQUIRED_TABLES:
         if table_name not in ppc:
-            if table_name in OPTIONAL_TABLES:
-                continue
             raise CaseLoadError(
                 f"Case '{source_label}' is missing required table '{table_name}'."
             )
 
-        matrix = np.asarray(ppc[table_name])
+    table_names = list(REQUIRED_TABLES)
+    if "gencost" in ppc:
+        table_names.append("gencost")
+
+    tables: dict[str, pd.DataFrame] = {}
+    table_columns: dict[str, tuple[str, ...]] = {}
+    for table_name in table_names:
+        # Check structure, not electrical feasibility or solver convergence.
+        try:
+            matrix = np.asarray(ppc[table_name])
+        except (TypeError, ValueError) as exc:
+            raise CaseLoadError(
+                f"Case table '{table_name}' must be a rectangular numeric matrix."
+            ) from exc
         if matrix.ndim != 2:
             raise CaseLoadError(
                 f"Case table '{table_name}' must be a two-dimensional matrix; "
                 f"received shape {matrix.shape}."
             )
-        minimum_width = MINIMUM_TABLE_WIDTHS[table_name]
-        if matrix.shape[1] < minimum_width:
+        if not np.issubdtype(matrix.dtype, np.number) or not np.isrealobj(matrix):
             raise CaseLoadError(
-                f"Case table '{table_name}' requires at least {minimum_width} columns; "
-                f"received {matrix.shape[1]}."
+                f"Case table '{table_name}' must contain real numeric values."
+            )
+        width = matrix.shape[1]
+        if table_name == "gencost":
+            if width < len(GENCOST_HEADER_COLUMNS):
+                raise CaseLoadError("Case table 'gencost' requires at least 4 columns.")
+        elif width not in SUPPORTED_TABLE_WIDTHS[table_name]:
+            allowed = ", ".join(
+                str(value) for value in SUPPORTED_TABLE_WIDTHS[table_name]
+            )
+            raise CaseLoadError(
+                f"Case table '{table_name}' has {width} columns; supported v2 "
+                f"layouts require {allowed}. Standard columns must not be "
+                "inserted, deleted, or reordered."
             )
 
         # MATPOWER/PYPOWER matrices are positional; names are attached only
         # after their original width and order have been recorded.
-        columns = columns_for_table(table_name, matrix.shape[1])
+        columns = columns_for_table(table_name, width)
         frame = pd.DataFrame(matrix.copy(), columns=columns)
         table_columns[table_name] = columns
         tables[table_name] = frame
 
     _normalize_bus_references(tables, source_label)
-
-    core_keys = {
-        "version",
-        "baseMVA",
-        *REQUIRED_TABLES,
-        *OPTIONAL_TABLES,
-    }
-    extras = {key: value for key, value in ppc.items() if key not in core_keys}
+    if "gencost" in tables:
+        _validate_gencost(tables["gencost"], len(tables["gen"]))
 
     return Case(
         base_mva=base_mva,
-        version=ppc.get("version", "2"),
+        version=version,
         tables=tables,
         table_columns=table_columns,
         metadata={"source": source_label},
-        extras=extras,
     )
 
 
@@ -214,7 +238,7 @@ def _normalize_bus_references(
     source_label: str,
 ) -> None:
     """
-    Turn the bus indices in bus, gen, and branch tables into integers.
+    Normalize bus references and reject IDs absent from the bus table.
     """
     # Only bus-reference columns become integers. Other quantities keep their
     # input values and are validated by the operation that actually uses them.
@@ -226,13 +250,20 @@ def _normalize_bus_references(
             f"Case '{source_label}' has duplicate bus.BUS_IDX values: {duplicate_ids[:10]}."
         )
 
-    _normalize_integer_column(tables["gen"], "BUS_IDX", "gen", source_label)
-    _normalize_integer_column(
-        tables["branch"], "F_BUS_IDX", "branch", source_label
-    )
-    _normalize_integer_column(
-        tables["branch"], "T_BUS_IDX", "branch", source_label
-    )
+    # Offline devices still need a valid physical bus reference.
+    for table_name, column_name in (
+        ("gen", "BUS_IDX"),
+        ("branch", "F_BUS_IDX"),
+        ("branch", "T_BUS_IDX"),
+    ):
+        frame = tables[table_name]
+        _normalize_integer_column(frame, column_name, table_name, source_label)
+        unknown = frame.loc[~frame[column_name].isin(bus["BUS_IDX"]), column_name]
+        if not unknown.empty:
+            raise CaseLoadError(
+                f"Case '{source_label}' column '{table_name}.{column_name}' "
+                f"references unknown bus IDs: {unknown.tolist()[:10]}."
+            )
 
 
 def _normalize_integer_column(
@@ -242,8 +273,55 @@ def _normalize_integer_column(
     source_label: str,
 ) -> None:
     numeric = pd.to_numeric(frame[column_name], errors="coerce")
-    if numeric.isna().any() or not np.all(np.equal(numeric, np.floor(numeric))):
+    if (
+        numeric.isna().any()
+        or not np.all(np.isfinite(numeric))
+        or not np.all(np.equal(numeric, np.floor(numeric)))
+        or (numeric < -(2**63)).any()
+        or (numeric >= 2**63).any()
+    ):
         raise CaseLoadError(
-            f"Case '{source_label}' column '{table_name}.{column_name}' must contain integers."
+            f"Case '{source_label}' column '{table_name}.{column_name}' "
+            "must contain finite integers in the signed 64-bit range."
         )
-    frame[column_name] = numeric.astype(int)
+    frame[column_name] = numeric.astype(np.int64)
+
+
+def _validate_gencost(frame: pd.DataFrame, generator_count: int) -> None:
+    """Check variable-width cost rows without evaluating their cost functions."""
+    # default columns are: model, startup, shutdown, n, cost1, cost2, ...
+    if len(frame) not in (generator_count, 2 * generator_count):
+        raise CaseLoadError(
+            "Case table 'gencost' must have one or two rows per generator; "
+            f"received {len(frame)} rows for {generator_count} generators."
+        )  # May have reactive power costs.
+
+    for position, row in enumerate(frame.to_numpy()):
+        model, count = row[0], row[3]
+        if not np.isfinite(model) or model not in (1, 2):
+            raise CaseLoadError(f"gencost row {position}: MODEL must be 1 or 2.")
+        if not np.isfinite(count) or count < 1 or count != np.floor(count):
+            raise CaseLoadError(
+                f"gencost row {position}: NCOST must be a positive integer."
+            )
+
+        # MODEL=1 stores (power, cost) pairs; MODEL=2 stores coefficients.
+        # 1: (0, 0), (50, 1000), (100, 2500), ... represent at 0, 50, 100 MW, 
+        # the piecewise linear cost is 0, 1000, 2500, ...
+        # denoted as [1, 0, 0, 3,  0, 0,  50, 1000,  100, 2500]
+        # 2: [1, 0, 0, 3,  0, 0,  50, 1000,  100, 2500] represents cubic, quadratic, linear, constant costs
+        required_width = 4 + int(count) * (2 if model == 1 else 1)
+        if len(row) < required_width:
+            raise CaseLoadError(
+                f"gencost row {position}: MODEL={int(model)}, NCOST={int(count)} "
+                f"requires at least {required_width} columns; received {len(row)}."
+            )
+        if not np.all(np.isfinite(row[:required_width])):
+            raise CaseLoadError(f"gencost row {position} must contain finite cost data.")
+        # Different NCOST values of each row must share a rectangular matrix using zero padding.
+        # Nonzero values beyond the declared cost data are not custom columns.
+        if np.any(row[required_width:] != 0):
+            raise CaseLoadError(
+                f"gencost row {position}: columns after the NCOST data "
+                "must be zero padding."
+            )

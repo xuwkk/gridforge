@@ -12,6 +12,8 @@ from typing import Any
 
 import numpy as np
 
+from gridforge.schemas import CORE_CASE_FIELDS
+
 
 _NUM_RE = re.compile(
     r"^[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?|inf|Inf|nan|NaN)$"
@@ -28,7 +30,13 @@ def _read_matpower_case(matpower_path: Path) -> dict[str, Any]:
     text = matpower_path.read_text(encoding="utf-8")
     clean = _strip_matlab_comments(text)
     assignments = _parse_assignments(clean)
-    case = {name: _parse_expr(expr) for name, expr in assignments.items()}
+    # Ignore non-core fields before parsing their values, just as dictionary
+    # loading ignores them before copying. They may have unrelated schemas.
+    case = {
+        name: _parse_expr(expr)
+        for name, expr in assignments.items()
+        if name in CORE_CASE_FIELDS
+    }
     case["version"] = str(case.get("version", "2"))
     return case
 

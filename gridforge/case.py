@@ -24,7 +24,7 @@ _PYPOWER_TABLE_ORDER = ("bus", "gen", "branch", "gencost")
 
 
 class Case:
-    """A lossless, named-DataFrame view of a PYPOWER/MATPOWER case.
+    """A named-DataFrame view of standard PYPOWER/MATPOWER case data.
 
     Tables returned by ``case[name]`` are mutable. Use pandas for data edits;
     GridForge handles case conversion and bus/network matrix construction.
