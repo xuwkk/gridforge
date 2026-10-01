@@ -6,6 +6,7 @@ from gridforge.ac import ACModel
 from gridforge.case import Case
 from gridforge.case_io import load_case
 from gridforge.dc import DCModel
+from gridforge.excel_io import load_excel
 from gridforge.errors import (
     ACNetworkError,
     CaseLoadError,
@@ -33,4 +34,5 @@ __all__ = [
     "GridForgeError",
     "__version__",
     "load_case",
+    "load_excel",
 ]

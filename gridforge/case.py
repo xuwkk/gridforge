@@ -355,23 +355,22 @@ class Case:
         self,
         path: str | Path,
         *,
-        components: Mapping[str, pd.DataFrame] | None = None,
         overwrite: bool = False,
     ) -> Path:
-        """Export every Case table and supplied component DataFrame to XLSX.
+        """Save all Case tables to a workbook readable by load_excel().
 
         Each table is a separate sheet. ``case_info`` holds baseMVA, version,
-        and provenance metadata. DataFrame indexes are omitted;
-        identifier columns such as BUS_IDX are preserved. This is a readable
-        snapshot, not a PYPOWER solver input or a round-trip import format.
+        provenance metadata, and standard PYPOWER export column order.
+        DataFrame indexes are omitted; identifier columns such as BUS_IDX
+        are preserved. Excel does not preserve arbitrary pandas dtypes.
 
-        Registered components are included automatically. External DataFrames
-        must be passed in ``components``. Existing files are protected unless
-        ``overwrite`` is explicitly true. Requires ``powergridforge[excel]``.
+        Registered components are included automatically; add them with
+        add_component() before saving. Existing xlsx files are protected unless
+        ``overwrite`` is explicitly true. Excel support is installed by default.
         """
         from gridforge.excel_io import export_excel
 
-        return export_excel(self, path, components=components, overwrite=overwrite)
+        return export_excel(self, path, overwrite=overwrite)
 
     def _validate_export_structure(self, table_names: list[str]) -> None:
         """Check columns and bus IDs for the already selected, present tables."""
