@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 import gridforge as gf
 import pandas as pd
 
@@ -59,9 +62,11 @@ case["gen"]["TECHNOLOGY"] = "thermal"
 # It ignores TECHNOLOGY and solar; neither is removed from the Case.
 ppc = case.to_pypower()
 
-# A copy or case.to_excel(path) retains the custom column and solar table.
-# To write to existing file, set overwrite=True.
-
-# case.to_excel("scenario.xlsx")
-# restored = gf.load_excel("scenario.xlsx")
-# restored.connection_matrix("solar")
+# Excel retains the custom column and solar table. Use a temporary workbook so
+# rerunning this example does not overwrite a study file or leave an output.
+with TemporaryDirectory(prefix="gridforge-quickstart-") as directory:
+    workbook = Path(directory) / "quickstart.xlsx"
+    case.to_excel(workbook)
+    restored = gf.load_excel(workbook)
+    print("restored tables:", restored.table_names())
+    print("restored solar matrix shape:", restored.connection_matrix("solar").shape)
