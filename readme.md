@@ -1,7 +1,7 @@
 # GridForge
 
 <p align="center">
-  <img src="docs/image/gridforge.png" alt="GridForge Logo" width="250">
+  <img src="https://raw.githubusercontent.com/xuwkk/gridforge/master/docs/image/gridforge.png" alt="GridForge Logo" width="250">
 </p>
 
 GridForge provides a small, explicit Python API for preparing standard
@@ -34,9 +34,10 @@ python -m mkdocs serve
 python -m mkdocs build --strict
 ```
 
-The [docs workflow](.github/workflows/docs.yml) publishes documentation
-changes from `master` to `gh-pages`. For first-time setup, choose **Deploy from
-a branch** and `gh-pages` under GitHub **Settings → Pages**.
+The [docs workflow](https://github.com/xuwkk/gridforge/blob/master/.github/workflows/docs.yml)
+publishes documentation changes from `master` to `gh-pages`. For first-time
+setup, choose **Deploy from a branch** and `gh-pages` under GitHub
+**Settings → Pages**.
 
 ## Quick Start
 
@@ -54,9 +55,11 @@ ac = case.ac_model()
 print(solar_by_bus_mw, dc.ptdf.shape, ac.Ybus.shape)
 ```
 
-For a complete example, see the [worked tutorial](docs/tutorial.md). The
-[API reference](docs/api-reference.md) lists the public operations; [Cases and
-Tables](docs/case.md) defines what each file format preserves. The
+For a complete example, see the
+[worked tutorial](https://xuwkk.github.io/gridforge/tutorial/). The
+[API reference](https://xuwkk.github.io/gridforge/api-reference/) lists the
+public operations; [Cases and Tables](https://xuwkk.github.io/gridforge/case/)
+defines what each file format preserves. The
 [documentation site](https://xuwkk.github.io/gridforge/) covers matrix axes,
 units, and AC/DC conventions.
 
