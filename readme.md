@@ -55,6 +55,18 @@ ac = case.ac_model()
 print(solar_by_bus_mw, dc.ptdf.shape, ac.Ybus.shape)
 ```
 
+Export the standard electrical model as a standalone, NumPy-only PYPOWER
+case file:
+
+```python
+case.to_python("case_custom.py")
+```
+
+The file defines `case_custom()` and can be loaded with ordinary Python,
+PYPOWER or GridForge. Standard numeric values retain full precision;
+custom component tables and metadata are omitted. Existing files are
+protected unless `overwrite=True`.
+
 For a complete example, see the
 [worked tutorial](https://xuwkk.github.io/gridforge/tutorial/). The
 [API reference](https://xuwkk.github.io/gridforge/api-reference/) lists the

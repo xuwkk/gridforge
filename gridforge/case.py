@@ -351,6 +351,27 @@ class Case:
                 ) from exc
         return ppc
 
+    def to_python(
+        self,
+        path: str | Path,
+        *,
+        overwrite: bool = False,
+    ) -> Path:
+        """Save a standalone, NumPy-only PYPOWER version-2 case function.
+
+        The .py filename stem must be an ASCII Python identifier and is used
+        as the function name. Each call returns independent arrays with the
+        current standard data from to_pypower(), including loaded PF/OPF
+        result columns. Custom tables, added columns and metadata are omitted.
+
+        Floating-point values and empty matrix shapes are preserved. Existing
+        files are protected unless overwrite=True. Returns the output path.
+        Invalid standard data raise CaseValidationError before writing.
+        """
+        from gridforge.python_io import export_python
+
+        return export_python(self, path, overwrite=overwrite)
+
     def to_excel(
         self,
         path: str | Path,

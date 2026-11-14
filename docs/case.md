@@ -104,6 +104,42 @@ reorder the DataFrame columns. This includes PF/OPF result columns present
 when loading. Added columns and custom component tables are omitted;
 `gencost` is omitted if absent.
 
+## Python Case File Save and Load
+
+Save the standard electrical model as an independent PYPOWER case:
+
+```python
+case = gf.load_case("case14")
+path = case.to_python("case_custom.py")
+```
+
+After saving to python file `case_custom.py`, you can load it using normal gridforge method.
+
+```python
+restored = gf.load_case(path)
+```
+
+Similar to [pypower style](https://github.com/rwl/PYPOWER/blob/master/pypower/case14.py) The filename stem becomes the function name. Existing files are protected unless
+`overwrite=True`.
+
+The generated file requires only NumPy and works with normal Python imports
+and PYPOWER's file loader:
+
+```python
+# From case_custom.py file import the function callsed case_custom
+from case_custom import case_custom
+ppc = case_custom()
+
+# Alternatively
+from pypower.loadcase import loadcase
+same_case = loadcase("case_custom.py")
+```
+
+Each function call returns a fresh dictionary and independent arrays.
+Standard values, row order, bus IDs, empty matrix shapes and loaded PF/OPF
+result columns are preserved. Float literals retain full float64 precision;
+NaN and infinity are also preserved. Output follows gridforge's `to_pypower()`: added columns, custom tables and metadata are omitted, and absent `gencost` remains absent. Use Excel when those additional tables and metadata must be retained.
+
 ## Excel Save and Load
 
 Save all Case tables, including registered components and added columns, then

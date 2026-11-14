@@ -18,6 +18,7 @@ General selection, row creation, and value edits use pandas on
 | `case.dc_model(slack_bus=None)` | Optional real `BUS_IDX` reference | New `DCModel` snapshot; dense NumPy matrices and p.u. flow terms. |
 | `case.ac_model()` | — | New `ACModel` snapshot; SciPy CSR admittance and connection matrices. |
 | `case.to_pypower()` | — | Independent standard PYPOWER dictionary; custom tables and columns omitted. |
+| `case.to_python(path, overwrite=False)` | `.py` path | Saves a standalone NumPy-only PYPOWER case function and returns the path. Preserves standard values and loaded result columns; refuses an existing file unless `overwrite=True`. |
 | `case.to_excel(path, overwrite=False)` | `.xlsx` path | Saves all Case tables and returns the path. Refuses an existing file unless `overwrite=True`. |
 
 `Case` also supports `"solar" in case`, iteration over table names, and
@@ -53,7 +54,7 @@ and the [AC network model](ac-network.md) for equations and limits.
 | Error | Typical cause |
 | --- | --- |
 | `gf.CaseLoadError` | Unsupported or malformed PYPOWER/MATPOWER input or GridForge workbook. |
-| `gf.CaseValidationError` | Edited standard Case cannot be exported, or a value cannot be written safely to Excel. |
+| `gf.CaseValidationError` | Edited standard Case cannot be exported to a dictionary/Python file, or a value cannot be written safely to Excel. |
 | `gf.ComponentValidationError` | Invalid component registration or invalid bus-to-device mapping. |
 | `gf.DCNetworkError` | Invalid/disconnected DC network, ambiguous slack, or unreliable reduced solve. |
 | `gf.ACNetworkError` | Invalid AC network parameters or bus references. |
